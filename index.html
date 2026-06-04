@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>3D Floor Plan Prompt Builder — Gemini</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0F0F0E;
+    --bg2: #181817;
+    --bg3: #222220;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.12);
+    --text: #F0EDE8;
+    --text2: #9A9690;
+    --text3: #6A6660;
+    --gold: #C8A96E;
+    --gold2: #E8C98E;
+    --gold-dim: rgba(200,169,110,0.15);
+    --red: #E05A4E;
+    --green: #5A9E6A;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    border-bottom: 0.5px solid var(--border);
+    padding: 28px 40px 24px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .header-left {}
+  .header-tag {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+  .header-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--text);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .header-title em { font-style: italic; color: var(--gold); }
+  .header-sub {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 6px;
+    font-weight: 300;
+  }
+  .header-badge {
+    font-size: 11px;
+    padding: 5px 12px;
+    border: 0.5px solid var(--border2);
+    border-radius: 99px;
+    color: var(--text2);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* LAYOUT */
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 40px 60px; display: flex; flex-direction: column; gap: 24px; }
+
+  /* CARD */
+  .card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .card-title {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 18px;
+  }
+
+  /* STEP */
+  .step-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .step-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--gold-dim); border: 0.5px solid var(--gold);
+    color: var(--gold); font-size: 11px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .step-text { font-size: 14px; font-weight: 500; color: var(--text); }
+
+  /* FORM */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 12px; color: var(--text2); font-weight: 400; }
+  .field .hint { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .field input, .field select, .field textarea {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border2);
+    background: var(--bg3);
+    color: var(--text);
+    width: 100%;
+    transition: border-color 0.15s;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239A9690' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--gold); }
+  .field textarea { resize: vertical; min-height: 64px; line-height: 1.6; }
+
+  /* STYLE CARDS */
+  .style-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .scard {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.1s;
+    background: var(--bg3);
+  }
+  .scard:hover { transform: translateY(-1px); border-color: var(--border2); }
+  .scard.active { border-color: var(--gold); }
+  .scard-palette { display: flex; height: 48px; }
+  .sw { flex: 1; }
+  .scard-body { padding: 8px 10px 9px; }
+  .scard-name { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .scard-desc { font-size: 10.5px; color: var(--text3); line-height: 1.3; }
+  .scard.active .scard-name { color: var(--gold); }
+
+  /* COLOR SWATCHES */
+  .col-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .color-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .cswatch {
+    width: 28px; height: 28px; border-radius: 5px;
+    cursor: pointer; border: 2px solid transparent;
+    transition: border-color 0.12s, transform 0.1s;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .cswatch:hover { transform: scale(1.1); }
+  .cswatch.active { border-color: var(--gold); }
+  .cswatch.active::after {
+    content: '✓';
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: white;
+    text-shadow: 0 0 3px rgba(0,0,0,0.8);
+  }
+  .palette-preview {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 12px;
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border);
+    min-height: 44px;
+  }
+  .pal-chip { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .pal-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; border: 0.5px solid rgba(255,255,255,0.1); }
+  .pal-none { font-size: 12px; color: var(--text3); font-style: italic; }
+
+  /* CONSTRAINTS */
+  .constraint-list { display: flex; flex-direction: column; gap: 0; }
+  .c-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 7px 0;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 12.5px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+  .c-row:last-child { border-bottom: none; }
+  .c-row.fixed { color: var(--text3); cursor: default; }
+  .c-row.opt { color: var(--text); cursor: pointer; }
+  .c-row.opt:hover { color: var(--text); }
+  .c-icon { font-size: 12px; margin-top: 2px; flex-shrink: 0; width: 16px; }
+  .c-row.fixed .c-icon { color: var(--text3); }
+  .c-row.opt input[type="checkbox"] {
+    width: 14px; height: 14px; margin-top: 2px; flex-shrink: 0;
+    accent-color: var(--gold); cursor: pointer;
+  }
+  .badge {
+    display: inline-block; font-size: 9px; padding: 2px 7px;
+    border-radius: 99px; font-weight: 500; margin-left: 8px;
+    vertical-align: middle;
+  }
+  .badge-always { background: rgba(224,90,78,0.15); color: var(--red); border: 0.5px solid rgba(224,90,78,0.3); }
+  .badge-opt { background: rgba(90,158,106,0.15); color: var(--green); border: 0.5px solid rgba(90,158,106,0.3); }
+  .divider { height: 0.5px; background: var(--border); margin: 20px 0; }
+
+  /* RENDER PARAMS */
+  .param-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* GENERATE BUTTON */
+  .gen-btn {
+    width: 100%; padding: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500;
+    background: var(--gold-dim);
+    color: var(--gold2);
+    border: 0.5px solid var(--gold);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.15s;
+    letter-spacing: 0.03em;
+  }
+  .gen-btn:hover { background: rgba(200,169,110,0.25); }
+
+  /* OUTPUT */
+  .out-section { display: none; }
+  .out-block { margin-bottom: 20px; }
+  .out-block:last-child { margin-bottom: 0; }
+  .out-label {
+    font-size: 10px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--text3); margin-bottom: 8px;
+  }
+  .out-label span { color: var(--gold); margin-right: 6px; }
+  .output-box {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+  }
+  .copy-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px; padding: 6px 14px;
+    background: transparent;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text2); cursor: pointer;
+    margin-top: 8px; transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+  /* FOOTER */
+  .footer {
+    border-top: 0.5px solid var(--border);
+    padding: 20px 40px;
+    font-size: 11px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  @media (max-width: 640px) {
+    .header { padding: 20px; flex-direction: column; align-items: flex-start; }
+    .container { padding: 20px; }
+    .grid2, .grid3, .param-grid { grid-template-columns: 1fr; }
+    .style-grid { grid-template-columns: repeat(2, 1fr); }
+    .header-title { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-tag">Gemini Image Generation · Prompt Builder</div>
+    <div class="header-title">3D Floor Plan <em>Renderer</em></div>
+    <div class="header-sub">Tạo prompt chuẩn từ layout 2D → bóc mái 3D dollhouse · Kiểm soát lỗi cửa, hướng, thiết bị</div>
+  </div>
+  <div class="header-badge">v1.0 · OneHousing</div>
+</div>
+
+<div class="container">
+
+  <!-- CĂN HỘ -->
+  <div class="card">
+    <div class="card-title">Thông tin căn hộ</div>
+    <div class="grid3">
+      <div class="field">
+        <label>Loại căn</label>
+        <select id="apt-type">
+          <option value="Studio (open-plan, no separate bedroom, living and sleeping zone in one open space)">Studio</option>
+          <option value="1-bedroom">1 phòng ngủ</option>
+          <option value="2-bedroom">2 phòng ngủ</option>
+          <option value="3-bedroom" selected>3 phòng ngủ</option>
+          <option value="4-bedroom">4 phòng ngủ</option>
+          <option value="penthouse">Penthouse</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Diện tích tim tường (m²)</label>
+        <input id="area" value="105" placeholder="VD: 105" />
+        <span class="hint">Gross floor area — tính từ mép ngoài tường bao</span>
+      </div>
+      <div class="field">
+        <label>Hướng cửa chính</label>
+        <select id="orientation">
+          <option value="">Không chỉ định</option>
+          <option value="main entrance door faces due East (chính Đông)">Chính Đông</option>
+          <option value="main entrance door faces due West (chính Tây)">Chính Tây</option>
+          <option value="main entrance door faces due South (chính Nam)">Chính Nam</option>
+          <option value="main entrance door faces due North (chính Bắc)">Chính Bắc</option>
+          <option value="main entrance door faces Northeast (Đông Bắc)">Đông Bắc</option>
+          <option value="main entrance door faces Southeast (Đông Nam)">Đông Nam</option>
+          <option value="main entrance door faces Northwest (Tây Bắc)">Tây Bắc</option>
+          <option value="main entrance door faces Southwest (Tây Nam)">Tây Nam</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Mô tả layout (tùy chọn — càng chi tiết càng giảm lỗi)</label>
+      <textarea id="layout-desc" placeholder="VD: 3PN 2WC, bếp mở thông phòng khách, 1 cửa chính góc trên phải, 2 cửa sổ lớn mặt tiền, máy giặt góc phải dưới..."></textarea>
+    </div>
+  </div>
+
+  <!-- BƯỚC 1: PHONG CÁCH -->
+  <div class="card">
+    <div class="step-row"><div class="step-num">1</div><div class="step-text">Chọn phong cách nội thất</div></div>
+    <div class="style-grid" id="style-grid">
+
+      <div class="scard active"
+        data-prompt="Luxury High-end interior: Carrara marble surfaces, brushed gold fixtures, deep walnut millwork, cream bouclé upholstery, rich layered textures, dramatic directional lighting">
+        <div class="scard-palette">
+          <div class="sw" style="background:#F5F0E8;"></div>
+          <div class="sw" style="background:#C8A96E;"></div>
+          <div class="sw" style="background:#4A3728;"></div>
+          <div class="sw" style="background:#E8DFD0;"></div>
+        </div>
+        <div class="scard-body">
+          <div class="scard-name">Luxury / High-end</div>
+          <div class="scard-desc">Marble · gold · dark wood · bouclé</div>
+        </div>
+      </div>
+
+      <div class="scard"
+        data-prompt="Warm Modern interior: terracotta and rust accent tones, natural oak flooring, linen and jute textiles, warm neutral palette, organic curved forms, cosy layered atmosphere">
+        <div class="scard-palette">
+          <div class="sw" style="background:#E8D5B7;"></div>
+          <div class="sw" style="background:#E07B54;"></div>
+          <div class="sw" style="background:#C4A882;"></div>
+          <div class="sw" style="background:#F0E6D3;"></div>
+        </div>
+        <div class="scard-body">
+          <div class="scard-name">Warm Modern</div>
+          <div class="scard-desc">Terracotta · oak · linen · warm neutral</div>
+        </div>
+      </div>
+
+      <div class="scard"
+        data-prompt="Japandi Minimalist interior: white and off-white walls, light ash and birch wood, matte textures, deliberate negative space, low-profile furniture, wabi-sabi calm aesthetic">
+        <div class="scard-palette">
+          <div class="sw" style="background:#F7F5F0;"></div>
+          <div class="sw" style="background:#D4CFC6;"></div>
+          <div class="sw" style="background:#B5A898;"></div>
+          <div class="sw" style="background:#ECEAE4;"></div>
+        </div>
+        <div class="scard-body">
+          <div class="scard-name">Japandi</div>
+          <div class="scard-desc">White · ash wood · matte · minimal</div>
+        </div>
+      </div>
+
+      <div class="scard"
+        data-prompt="Art Deco interior: bold geometric patterns, lacquered surfaces in black and ivory, polished brass and chrome accents, velvet upholstery in jewel tones, symmetrical grand composition">
+        <div class="scard-palette">
+          <div class="sw" style="background:#1A1A1A;"></div>
+          <div class="sw" style="background:#C8A96E;"></div>
+          <div class="sw" style="background:#F5F0E0;"></div>
+          <div class="sw" style="background:#4A2040;"></div>
+        </div>
+        <div class="scard-body">
+          <div class="scard-name">Art Deco</div>
+          <div class="scard-desc">Geometric · brass · velvet · lacquer</div>
+        </div>
+      </div>
+
+      <div class="scard"
+        data-prompt="Coastal Luxury interior: travertine stone surfaces, bleached oak flooring, natural linen drapery, palette of sand, ivory and soft sage, rattan and organic woven textures, airy light-filled atmosphere">
+        <div class="scard-palette">
+          <div class="sw" style="background:#E8E0D0;"></div>
+          <div class="sw" style="background:#C8B89A;"></div>
+          <div class="sw" style="background:#A8B89A;"></div>
+          <div class="sw" style="background:#D8E0D8;"></div>
+        </div>
+        <div class="scard-body">
+          <div class="scard-name">Coastal Luxury</div>
+          <div class="scard-desc">Travertine · linen · sage · rattan</div>
+        </div>
+      </div>
+
+      <div class="scard"
+        data-prompt="Neo-Classical interior: ornate crown mouldings, herringbone parquet floors, tufted upholstery, antique brass hardware, symmetrical layout, grand European proportions, timeless elegance">
+        <div class="scard-palette">
+          <div class="sw" style="background:#F2EDE0;"></div>
+          <div class="sw" style="background:#B8860B;"></div>
+          <div class="sw" style="background:#8B7355;"></div>
+          <div class="sw" style="background:#D4C5A8;"></div>
+        </div>
+        <div class="scard-body">
+          <div class="scard-name">Neo-Classic</div>
+          <div class="scard-desc">Moulding · parquet · tufted · brass</div>
+        </div>
+      </div>
+
+      <div class="scard"
+        data-prompt="Contemporary Industrial interior: exposed concrete walls and ceiling, steel-frame furniture and partitions, dark moody palette, Edison-style pendant lighting, raw material textures throughout">
+        <div class="scard-palette">
+          <div class="sw" style="background:#4A4A48;"></div>
+          <div class="sw" style="background:#7A7A78;"></div>
+          <div class="sw" style="background:#2C2C2A;"></div>
+          <div class="sw" style="background:#9A8870;"></div>
+        </div>
+        <div class="scard-body">
+          <div class="scard-name">Industrial</div>
+          <div class="scard-desc">Concrete · steel · dark · raw</div>
+        </div>
+      </div>
+
+      <div class="scard"
+        data-prompt="Wabi-Sabi interior: imperfect natural textures, aged plaster walls, raw unfinished linen, handcrafted ceramic and pottery, muted earthy tones, unfinished wood, quiet organic atmosphere celebrating imperfection">
+        <div class="scard-palette">
+          <div class="sw" style="background:#D8CFC0;"></div>
+          <div class="sw" style="background:#B8A890;"></div>
+          <div class="sw" style="background:#987868;"></div>
+          <div class="sw" style="background:#E8E0D4;"></div>
+        </div>
+        <div class="scard-body">
+          <div class="scard-name">Wabi-Sabi</div>
+          <div class="scard-desc">Aged plaster · ceramic · earthy · raw</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BƯỚC 2: MÀU SẮC -->
+  <div class="card">
+    <div class="step-row"><div class="step-num">2</div><div class="step-text">Chọn màu chủ đạo</div></div>
+
+    <div class="col-label">Màu tường & không gian</div>
+    <div class="color-row">
+      <div class="cswatch" style="background:#F5F0E8;" data-cat="wall" data-name="Ivory warm" data-hex="#F5F0E8" title="Ivory warm"></div>
+      <div class="cswatch" style="background:#E8E0D5;" data-cat="wall" data-name="Greige" data-hex="#E8E0D5" title="Greige"></div>
+      <div class="cswatch" style="background:#D4C5B0;" data-cat="wall" data-name="Sand beige" data-hex="#D4C5B0" title="Sand beige"></div>
+      <div class="cswatch" style="background:#C9B99A;" data-cat="wall" data-name="Warm taupe" data-hex="#C9B99A" title="Warm taupe"></div>
+      <div class="cswatch" style="background:#F7F7F5;outline:0.5px solid #333;" data-cat="wall" data-name="Pure white" data-hex="#F7F7F5" title="Pure white"></div>
+      <div class="cswatch" style="background:#F0EBE3;" data-cat="wall" data-name="Off-white" data-hex="#F0EBE3" title="Off-white"></div>
+      <div class="cswatch" style="background:#E8EDE8;" data-cat="wall" data-name="Sage mist" data-hex="#E8EDE8" title="Sage mist"></div>
+      <div class="cswatch" style="background:#D6E0E0;" data-cat="wall" data-name="Pale teal" data-hex="#D6E0E0" title="Pale teal"></div>
+      <div class="cswatch" style="background:#1C2B3A;" data-cat="wall" data-name="Deep navy" data-hex="#1C2B3A" title="Deep navy"></div>
+      <div class="cswatch" style="background:#2C2C2A;" data-cat="wall" data-name="Charcoal" data-hex="#2C2C2A" title="Charcoal"></div>
+      <div class="cswatch" style="background:#3D2B1F;" data-cat="wall" data-name="Dark espresso" data-hex="#3D2B1F" title="Dark espresso"></div>
+      <div class="cswatch" style="background:#8B9E8A;" data-cat="wall" data-name="Olive green" data-hex="#8B9E8A" title="Olive green"></div>
+    </div>
+
+    <div class="col-label">Màu accent & nội thất</div>
+    <div class="color-row">
+      <div class="cswatch" style="background:#C8A96E;" data-cat="accent" data-name="Brushed gold" data-hex="#C8A96E" title="Brushed gold"></div>
+      <div class="cswatch" style="background:#B8860B;" data-cat="accent" data-name="Antique brass" data-hex="#B8860B" title="Antique brass"></div>
+      <div class="cswatch" style="background:#E8D5B7;" data-cat="accent" data-name="Champagne" data-hex="#E8D5B7" title="Champagne"></div>
+      <div class="cswatch" style="background:#C0C0C0;" data-cat="accent" data-name="Silver chrome" data-hex="#C0C0C0" title="Silver chrome"></div>
+      <div class="cswatch" style="background:#1A1A1A;" data-cat="accent" data-name="Matte black" data-hex="#1A1A1A" title="Matte black"></div>
+      <div class="cswatch" style="background:#6B3A2A;" data-cat="accent" data-name="Dark walnut" data-hex="#6B3A2A" title="Dark walnut"></div>
+      <div class="cswatch" style="background:#C4A882;" data-cat="accent" data-name="Warm oak" data-hex="#C4A882" title="Warm oak"></div>
+      <div class="cswatch" style="background:#E07B54;" data-cat="accent" data-name="Terracotta" data-hex="#E07B54" title="Terracotta"></div>
+      <div class="cswatch" style="background:#8B6F5E;" data-cat="accent" data-name="Clay brown" data-hex="#8B6F5E" title="Clay brown"></div>
+      <div class="cswatch" style="background:#4A6741;" data-cat="accent" data-name="Forest green" data-hex="#4A6741" title="Forest green"></div>
+      <div class="cswatch" style="background:#1B4B6B;" data-cat="accent" data-name="Sapphire blue" data-hex="#1B4B6B" title="Sapphire blue"></div>
+      <div class="cswatch" style="background:#722F37;" data-cat="accent" data-name="Deep burgundy" data-hex="#722F37" title="Deep burgundy"></div>
+    </div>
+
+    <div class="col-label">Palette đã chọn</div>
+    <div class="palette-preview" id="palette-preview">
+      <span class="pal-none">Chưa chọn màu nào</span>
+    </div>
+  </div>
+
+  <!-- BƯỚC 3: RENDER & CONSTRAINT -->
+  <div class="card">
+    <div class="step-row"><div class="step-num">3</div><div class="step-text">Thông số render</div></div>
+    <div class="param-grid" style="margin-bottom:20px;">
+      <div class="field">
+        <label>Góc nhìn</label>
+        <select id="view-angle">
+          <option value="45-degree top-down isometric" selected>Isometric 45°</option>
+          <option value="straight top-down bird's-eye (90°)">Bird's eye 90°</option>
+          <option value="low isometric (30°)">Low isometric 30°</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Ánh sáng</label>
+        <select id="lighting">
+          <option value="natural daylight from top-left, soft shadows">Tự nhiên ban ngày</option>
+          <option value="warm golden hour lighting, long soft shadows">Golden hour</option>
+          <option value="bright even studio lighting, minimal shadows">Studio</option>
+          <option value="dramatic directional lighting, deep contrast, luxury editorial feel" selected>Dramatic high-end</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Chất lượng</label>
+        <select id="quality">
+          <option value="photorealistic 3D render, ultra high detail, 8K resolution" selected>Photorealistic 8K</option>
+          <option value="high-quality 3D architectural visualization">Arch-viz HD</option>
+          <option value="stylized 3D illustration, clean rendering">Stylized 3D</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Background</label>
+        <select id="bg">
+          <option value="pure white background" selected>Trắng</option>
+          <option value="soft light gray background">Xám nhạt</option>
+          <option value="transparent cutout background">Transparent</option>
+          <option value="dark charcoal background">Charcoal tối</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div style="display:flex;align-items:center;margin-bottom:12px;">
+      <span style="font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);">Constraint cố định</span>
+      <span class="badge badge-always">Luôn bật</span>
+    </div>
+    <div class="constraint-list">
+      <div class="c-row fixed"><span class="c-icon">🔒</span> Tường, vách ngăn, cột kết cấu giữ 100% theo layout gốc — không sai lệch</div>
+      <div class="c-row fixed"><span class="c-icon">🚪</span> Cửa ra vào: đếm đúng số lượng, đặt đúng vị trí, mỗi cửa xuất hiện đúng 1 lần — không nhân đôi, không bỏ sót</div>
+      <div class="c-row fixed"><span class="c-icon">🪟</span> Cửa sổ: đếm đúng số lượng, đặt đúng vị trí tường, kích thước tương đối khớp layout</div>
+      <div class="c-row fixed"><span class="c-icon">↔️</span> Hướng cánh cửa khớp layout: inward/outward, left-hinge/right-hinge — không mirror, không xoay</div>
+      <div class="c-row fixed"><span class="c-icon">🫙</span> Thiết bị (máy giặt, bếp, toilet, bồn tắm, tủ lạnh): đúng vị trí, mặt chức năng hướng lên — không lật, không nghiêng</div>
+      <div class="c-row fixed"><span class="c-icon">🛋️</span> Logic nội thất: headboard sát tường, sofa hướng TV, bàn ăn giữa dining zone, bàn làm việc sát/gần tường</div>
+      <div class="c-row fixed"><span class="c-icon">🏠</span> Số phòng cố định — không gộp, không tách, không thêm, không bớt</div>
+      <div class="c-row fixed"><span class="c-icon">📐</span> Tỉ lệ không gian giữ đúng: phòng lớn hơn trong layout phải lớn hơn trong 3D</div>
+    </div>
+
+    <div style="display:flex;align-items:center;margin-top:18px;margin-bottom:12px;">
+      <span style="font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);">Constraint tùy chọn</span>
+      <span class="badge badge-opt">Bật / Tắt</span>
+    </div>
+    <div class="constraint-list">
+      <label class="c-row opt"><input type="checkbox" id="c6"> Không thêm balcony / loggia nếu không có trong layout</label>
+      <label class="c-row opt"><input type="checkbox" id="c7"> Không thêm cây xanh / plants ngoài những gì đã mô tả</label>
+      <label class="c-row opt"><input type="checkbox" id="c8"> Không thêm artwork hoặc trang trí tường không có trong mô tả</label>
+      <label class="c-row opt"><input type="checkbox" id="c9"> Không thay đổi màu sàn / màu tường giữa các phòng</label>
+    </div>
+  </div>
+
+  <button class="gen-btn" onclick="generatePrompt()">✦ &nbsp;Tạo Prompt</button>
+
+  <!-- OUTPUT -->
+  <div class="out-section" id="out-section">
+    <div class="card">
+      <div class="card-title">Output — 3 prompt sẵn dùng</div>
+
+      <div class="out-block">
+        <div class="out-label"><span>①</span> Main Prompt — dán kèm ảnh layout 2D vào Gemini</div>
+        <div class="output-box" id="main-prompt"></div>
+        <button class="copy-btn" onclick="copyText('main-prompt', this, 'Copy main prompt')">⎘&nbsp; Copy main prompt</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="out-block">
+        <div class="out-label"><span>②</span> Negative Prompt — dán vào ô "What to avoid" nếu Gemini có</div>
+        <div class="output-box" id="neg-prompt"></div>
+        <button class="copy-btn" onclick="copyText('neg-prompt', this, 'Copy negative prompt')">⎘&nbsp; Copy negative prompt</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="out-block">
+        <div class="out-label"><span>③</span> Fix Prompt — khi kết quả sai, điền lỗi cụ thể vào [...] rồi dùng</div>
+        <div class="output-box" id="fix-prompt"></div>
+        <button class="copy-btn" onclick="copyText('fix-prompt', this, 'Copy fix prompt')">⎘&nbsp; Copy fix prompt</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">3D Floor Plan Prompt Builder · Gemini · Built for OneHousing</div>
+
+<script>
+let selStyle = {
+  prompt: 'Luxury High-end interior: Carrara marble surfaces, brushed gold fixtures, deep walnut millwork, cream bouclé upholstery, rich layered textures, dramatic directional lighting'
+};
+const selColors = { wall: null, accent: null };
+
+document.querySelectorAll('.scard').forEach(c => {
+  c.addEventListener('click', () => {
+    document.querySelectorAll('.scard').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    selStyle = { prompt: c.dataset.prompt };
+  });
+});
+
+document.querySelectorAll('.cswatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    const cat = sw.dataset.cat;
+    const isActive = sw.classList.contains('active');
+    document.querySelectorAll(`.cswatch[data-cat="${cat}"]`).forEach(x => x.classList.remove('active'));
+    if (isActive) { selColors[cat] = null; }
+    else { sw.classList.add('active'); selColors[cat] = { name: sw.dataset.name, hex: sw.dataset.hex }; }
+    updatePalette();
+  });
+});
+
+function updatePalette() {
+  const el = document.getElementById('palette-preview');
+  const chips = [];
+  if (selColors.wall) chips.push({ label: 'Tường: ' + selColors.wall.name, hex: selColors.wall.hex });
+  if (selColors.accent) chips.push({ label: 'Accent: ' + selColors.accent.name, hex: selColors.accent.hex });
+  el.innerHTML = chips.length
+    ? chips.map(c => `<span class="pal-chip"><span class="pal-dot" style="background:${c.hex}"></span>${c.label}</span>`).join('')
+    : '<span class="pal-none">Chưa chọn màu nào</span>';
+}
+
+function buildColorLine() {
+  const p = [];
+  if (selColors.wall) p.push(`dominant wall/space color: ${selColors.wall.name} (${selColors.wall.hex})`);
+  if (selColors.accent) p.push(`accent and furniture color: ${selColors.accent.name} (${selColors.accent.hex})`);
+  return p.length ? '\nColor palette: ' + p.join('; ') : '';
+}
+
+function getOptional() {
+  const map = {
+    c6: 'Do not add balconies, loggias, or terraces not visible in the floor plan.',
+    c7: 'Do not introduce decorative plants beyond those described.',
+    c8: 'Do not add wall art, sculptures, or decorative objects not described.',
+    c9: 'Do not vary wall colors or floor materials between rooms unless specified.'
+  };
+  return Object.keys(map).filter(k => document.getElementById(k).checked).map(k => map[k]);
+}
+
+function generatePrompt() {
+  const aptType = document.getElementById('apt-type').value;
+  const area = document.getElementById('area').value || 'unspecified';
+  const orientation = document.getElementById('orientation').value;
+  const layoutDesc = document.getElementById('layout-desc').value.trim();
+  const viewAngle = document.getElementById('view-angle').value;
+  const lighting = document.getElementById('lighting').value;
+  const quality = document.getElementById('quality').value;
+  const bg = document.getElementById('bg').value;
+  const optional = getOptional();
+  const colorLine = buildColorLine();
+  const layoutLine = layoutDesc ? `\nLayout description: ${layoutDesc}` : '';
+  const orientLine = orientation ? `\nEntrance orientation: ${orientation}` : '';
+  const optBlock = optional.length ? '\n' + optional.map((c,i) => `${11+i}. ${c}`).join('\n') : '';
+
+  const main =
+`You are a world-class architectural 3D visualization artist. I am providing a 2D floor plan image of a ${aptType} apartment (gross floor area including wall thickness: ${area} sqm${orientLine}).
+
+Generate a photorealistic cutaway dollhouse 3D render of this exact apartment.
+
+RENDER SPECIFICATIONS:
+- View: ${viewAngle} cutaway with roof fully removed to reveal interior
+- Style: ${selStyle.prompt}${colorLine}
+- Lighting: ${lighting}
+- Quality: ${quality}
+- Background: ${bg}
+- All rooms fully furnished and styled consistently with the design theme${layoutLine}
+
+STRICT LAYOUT FIDELITY RULES — treat the floor plan as an immutable construction blueprint:
+
+DOORS & WINDOWS — critical, audit before rendering:
+1. Count every door and every window in the floor plan. Render exactly that count — no more, no less.
+2. Each door appears exactly once at its exact position. No duplication, no omission.
+3. Each window appears exactly once at its exact wall position, with proportional width matching the floor plan.
+4. Door swing direction must match the floor plan precisely: inward vs outward, left-hinge vs right-hinge. Do not mirror or rotate.
+5. Do not invent doors or windows not present. Do not remove any that exist.
+
+STRUCTURE & SPACE:
+6. Preserve ALL walls, partitions, columns, and structural elements exactly as shown — zero deviation.
+7. Room count is fixed: do not merge, split, add, or remove any room or zone.
+8. Spatial proportions must be preserved: a room larger in the floor plan must remain proportionally larger in 3D.
+
+APPLIANCES & FURNITURE:
+9. All appliances (washing machine, oven, cooktop, toilet, bathtub, sink, fridge) must stay in exact position with functional face oriented upward — never flipped, tilted, or inverted.
+10. Furniture placement follows real-world logic: bed headboard against a wall, sofa facing the TV unit, dining table centred in the dining zone, desk near a wall — consistent with room orientation in the floor plan.${optBlock}
+
+OVERRIDING INSTRUCTION: Before rendering, mentally audit and count all doors and windows in the floor plan image. Every spatial decision must be directly traceable to a visible element in the provided image. Do not redesign, reimagine, or improve the layout in any way.`;
+
+  const neg =
+`Do not: add, remove, or duplicate any door or window; invent openings not in the floor plan; flip, invert, or rotate any appliance; mirror door swing directions; merge or split rooms; alter wall positions or thicknesses; change spatial proportions; place furniture in physically illogical positions (e.g. bed floating mid-room, sofa facing a blank wall with no screen). Every element must be directly traceable to the provided floor plan image.`;
+
+  const fix =
+`The previous render has a layout error. Regenerate strictly using the attached floor plan as the sole spatial reference.
+
+Error to fix: [DESCRIBE SPECIFIC ERROR — examples:
+- "A door to the master bedroom has been duplicated — there is only ONE door, on the left wall."
+- "A window on the south facade is missing — the floor plan shows 2 windows on that wall, the render shows 1."
+- "The washing machine is rendered upside-down — drum face must be oriented upward."
+- "Living room and bedroom are merged — they must be separated by the wall shown in the floor plan."
+- "The sofa faces the wrong direction — it must face the TV wall on the right side of the living room."]
+
+Keep all design style, color palette, lighting, and camera angle unchanged. Correct only the stated error and nothing else.`;
+
+  document.getElementById('main-prompt').textContent = main;
+  document.getElementById('neg-prompt').textContent = neg;
+  document.getElementById('fix-prompt').textContent = fix;
+  const sec = document.getElementById('out-section');
+  sec.style.display = 'block';
+  setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function copyText(id, btn, label) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => {
+    btn.textContent = '✓  Đã copy';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.innerHTML = `⎘&nbsp; ${label}`;
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+</script>
+</body>
+</html>
