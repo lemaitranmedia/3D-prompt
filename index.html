@@ -1,306 +1,151 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>3D Floor Plan Prompt Builder — Gemini</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0F0F0E;
-    --bg2: #181817;
-    --bg3: #222220;
-    --border: rgba(255,255,255,0.08);
-    --border2: rgba(255,255,255,0.12);
-    --text: #F0EDE8;
-    --text2: #9A9690;
-    --text3: #6A6660;
-    --gold: #C8A96E;
-    --gold2: #E8C98E;
-    --gold-dim: rgba(200,169,110,0.15);
-    --red: #E05A4E;
-    --green: #5A9E6A;
-    --radius: 10px;
-    --radius-sm: 6px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    line-height: 1.6;
-    min-height: 100vh;
-  }
+:root{
+  --bg:#0F0F0E;--bg2:#181817;--bg3:#222220;--bg4:#2A2A28;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);--border3:rgba(255,255,255,0.18);
+  --text:#F0EDE8;--text2:#9A9690;--text3:#6A6660;
+  --gold:#C8A96E;--gold2:#E8C98E;--gold-dim:rgba(200,169,110,0.12);--gold-bdr:rgba(200,169,110,0.28);
+  --red:#C4665A;--green:#5A9E6A;
+  --r:10px;--r-sm:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
 
-  /* HEADER */
-  .header {
-    border-bottom: 0.5px solid var(--border);
-    padding: 28px 40px 24px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 20px;
-  }
-  .header-left {}
-  .header-tag {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 6px;
-  }
-  .header-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 28px;
-    color: var(--text);
-    line-height: 1.1;
-    letter-spacing: -0.01em;
-  }
-  .header-title em { font-style: italic; color: var(--gold); }
-  .header-sub {
-    font-size: 13px;
-    color: var(--text2);
-    margin-top: 6px;
-    font-weight: 300;
-  }
-  .header-badge {
-    font-size: 11px;
-    padding: 5px 12px;
-    border: 0.5px solid var(--border2);
-    border-radius: 99px;
-    color: var(--text2);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
+/* HEADER */
+.header{border-bottom:0.5px solid var(--border);padding:26px 40px 22px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.h-tag{font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.h-title{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);line-height:1.1;letter-spacing:-.01em}
+.h-title em{font-style:italic;color:var(--gold)}
+.h-sub{font-size:12.5px;color:var(--text2);margin-top:6px;font-weight:300}
+.h-badge{font-size:11px;padding:5px 12px;border:0.5px solid var(--border2);border-radius:99px;color:var(--text2);white-space:nowrap;flex-shrink:0}
 
-  /* LAYOUT */
-  .container { max-width: 900px; margin: 0 auto; padding: 32px 40px 60px; display: flex; flex-direction: column; gap: 24px; }
+/* TOP FORM */
+.top-form{max-width:960px;margin:0 auto;padding:28px 40px 0}
 
-  /* CARD */
-  .card {
-    background: var(--bg2);
-    border: 0.5px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px;
-  }
-  .card-title {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text3);
-    margin-bottom: 18px;
-  }
+/* MAIN LAYOUT */
+.builder-wrap{display:grid;grid-template-columns:240px 1fr;gap:0;max-width:960px;margin:0 auto;padding:0 40px 60px;align-items:start}
 
-  /* STEP */
-  .step-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-  .step-num {
-    width: 24px; height: 24px; border-radius: 50%;
-    background: var(--gold-dim); border: 0.5px solid var(--gold);
-    color: var(--gold); font-size: 11px; font-weight: 500;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
-  .step-text { font-size: 14px; font-weight: 500; color: var(--text); }
+/* SIDEBAR */
+.sidebar{position:sticky;top:20px;padding-right:20px;padding-top:24px;max-height:90vh;overflow-y:auto}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+.sidebar-title{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:14px;padding-left:2px}
+.group-label{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:12px 0 5px 2px}
+.style-btn{display:block;width:100%;text-align:left;padding:7px 10px;background:none;border:none;border-left:2px solid transparent;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12.5px;cursor:pointer;transition:all .15s;line-height:1.4;border-radius:0 var(--r-sm) var(--r-sm) 0}
+.style-btn:hover{color:var(--text);background:var(--bg2)}
+.style-btn.active{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim)}
+.style-btn .sbn{display:block;font-size:10px;color:var(--text3);margin-bottom:1px}
+.style-btn.active .sbn{color:var(--gold);opacity:.65}
+.sdiv{height:0.5px;background:var(--border);margin:6px 0 4px}
 
-  /* FORM */
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
-  .field:last-child { margin-bottom: 0; }
-  .field label { font-size: 12px; color: var(--text2); font-weight: 400; }
-  .field .hint { font-size: 11px; color: var(--text3); margin-top: 3px; }
-  .field input, .field select, .field textarea {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    padding: 9px 12px;
-    border-radius: var(--radius-sm);
-    border: 0.5px solid var(--border2);
-    background: var(--bg3);
-    color: var(--text);
-    width: 100%;
-    transition: border-color 0.15s;
-    outline: none;
-    appearance: none;
-    -webkit-appearance: none;
-  }
-  .field select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239A9690' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    padding-right: 28px;
-  }
-  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--gold); }
-  .field textarea { resize: vertical; min-height: 64px; line-height: 1.6; }
+/* RIGHT CONTENT */
+.right-col{padding-top:24px;display:flex;flex-direction:column;gap:20px}
 
-  /* STYLE CARDS */
-  .style-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .scard {
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    overflow: hidden;
-    transition: border-color 0.15s, transform 0.1s;
-    background: var(--bg3);
-  }
-  .scard:hover { transform: translateY(-1px); border-color: var(--border2); }
-  .scard.active { border-color: var(--gold); }
-  .scard-palette { display: flex; height: 48px; }
-  .sw { flex: 1; }
-  .scard-body { padding: 8px 10px 9px; }
-  .scard-name { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
-  .scard-desc { font-size: 10.5px; color: var(--text3); line-height: 1.3; }
-  .scard.active .scard-name { color: var(--gold); }
+/* CARD */
+.card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r);padding:22px}
+.card-title{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:16px}
 
-  /* COLOR SWATCHES */
-  .col-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-  .color-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-  .cswatch {
-    width: 28px; height: 28px; border-radius: 5px;
-    cursor: pointer; border: 2px solid transparent;
-    transition: border-color 0.12s, transform 0.1s;
-    flex-shrink: 0;
-    position: relative;
-  }
-  .cswatch:hover { transform: scale(1.1); }
-  .cswatch.active { border-color: var(--gold); }
-  .cswatch.active::after {
-    content: '✓';
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10px; color: white;
-    text-shadow: 0 0 3px rgba(0,0,0,0.8);
-  }
-  .palette-preview {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: 10px 12px;
-    background: var(--bg3);
-    border-radius: var(--radius-sm);
-    border: 0.5px solid var(--border);
-    min-height: 44px;
-  }
-  .pal-chip { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
-  .pal-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; border: 0.5px solid rgba(255,255,255,0.1); }
-  .pal-none { font-size: 12px; color: var(--text3); font-style: italic; }
+/* STEP ROW */
+.step-row{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:0.5px solid var(--gold-bdr);color:var(--gold);font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-text{font-size:14px;font-weight:500;color:var(--text)}
 
-  /* CONSTRAINTS */
-  .constraint-list { display: flex; flex-direction: column; gap: 0; }
-  .c-row {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding: 7px 0;
-    border-bottom: 0.5px solid var(--border);
-    font-size: 12.5px;
-    color: var(--text2);
-    line-height: 1.5;
-  }
-  .c-row:last-child { border-bottom: none; }
-  .c-row.fixed { color: var(--text3); cursor: default; }
-  .c-row.opt { color: var(--text); cursor: pointer; }
-  .c-row.opt:hover { color: var(--text); }
-  .c-icon { font-size: 12px; margin-top: 2px; flex-shrink: 0; width: 16px; }
-  .c-row.fixed .c-icon { color: var(--text3); }
-  .c-row.opt input[type="checkbox"] {
-    width: 14px; height: 14px; margin-top: 2px; flex-shrink: 0;
-    accent-color: var(--gold); cursor: pointer;
-  }
-  .badge {
-    display: inline-block; font-size: 9px; padding: 2px 7px;
-    border-radius: 99px; font-weight: 500; margin-left: 8px;
-    vertical-align: middle;
-  }
-  .badge-always { background: rgba(224,90,78,0.15); color: var(--red); border: 0.5px solid rgba(224,90,78,0.3); }
-  .badge-opt { background: rgba(90,158,106,0.15); color: var(--green); border: 0.5px solid rgba(90,158,106,0.3); }
-  .divider { height: 0.5px; background: var(--border); margin: 20px 0; }
+/* FORM FIELDS */
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:12px;color:var(--text2)}
+.field .hint{font-size:11px;color:var(--text3);margin-top:3px}
+.field input,.field select,.field textarea{font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 11px;border-radius:var(--r-sm);border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);width:100%;outline:none;transition:border-color .15s;appearance:none;-webkit-appearance:none}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235A5650' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--gold)}
+.field textarea{resize:vertical;min-height:56px;line-height:1.6}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 
-  /* RENDER PARAMS */
-  .param-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* STYLE PREVIEW PANEL */
+.style-preview{background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--r);padding:16px;min-height:100px}
+.sp-empty{font-size:12.5px;color:var(--text3);font-style:italic;padding:20px 0;text-align:center}
+.sp-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.sp-name{font-family:'DM Serif Display',serif;font-size:18px;line-height:1.1}
+.sp-name em{font-style:italic;color:var(--gold)}
+.sp-mood{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.sp-mood-tag{font-size:10.5px;padding:2px 9px;border:0.5px solid var(--border2);border-radius:99px;color:var(--text3)}
+.sp-palette{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.sp-col-card{border:0.5px solid var(--border);border-radius:var(--r-sm);overflow:hidden;background:var(--bg2)}
+.sp-col-swatch{height:32px}
+.sp-col-body{padding:6px 8px}
+.sp-col-role{font-size:9px;color:var(--text3);font-weight:500;letter-spacing:.04em}
+.sp-col-label{font-size:11px;color:var(--text);font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-col-hex{font-size:9.5px;color:var(--text3);font-family:monospace}
+.sp-mats{font-size:11.5px;color:var(--text2);line-height:1.7;margin-bottom:8px}
+.sp-mats strong{color:var(--text);font-weight:500}
+.sp-avoid{background:rgba(196,102,90,0.07);border:0.5px solid rgba(196,102,90,0.2);border-radius:var(--r-sm);padding:8px 10px;font-size:11px;color:var(--red);line-height:1.6}
 
-  /* GENERATE BUTTON */
-  .gen-btn {
-    width: 100%; padding: 14px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px; font-weight: 500;
-    background: var(--gold-dim);
-    color: var(--gold2);
-    border: 0.5px solid var(--gold);
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: background 0.15s;
-    letter-spacing: 0.03em;
-  }
-  .gen-btn:hover { background: rgba(200,169,110,0.25); }
+/* CONSTRAINT */
+.c-list{display:flex;flex-direction:column}
+.c-row{display:flex;align-items:flex-start;gap:9px;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:12.5px;color:var(--text2);line-height:1.5}
+.c-row:last-child{border-bottom:none}
+.c-icon{font-size:11.5px;margin-top:2px;flex-shrink:0;width:16px;color:var(--text3)}
+.c-row.opt{cursor:pointer;color:var(--text)}
+.c-row.opt input[type="checkbox"]{width:14px;height:14px;margin-top:2px;flex-shrink:0;accent-color:var(--gold);cursor:pointer}
+.badge{display:inline-block;font-size:9px;padding:2px 7px;border-radius:99px;font-weight:500;margin-left:8px;vertical-align:middle}
+.badge-always{background:rgba(196,102,90,0.15);color:var(--red);border:0.5px solid rgba(196,102,90,0.3)}
+.badge-opt{background:rgba(90,158,106,0.15);color:var(--green);border:0.5px solid rgba(90,158,106,0.3)}
+.divider{height:0.5px;background:var(--border);margin:16px 0}
 
-  /* OUTPUT */
-  .out-section { display: none; }
-  .out-block { margin-bottom: 20px; }
-  .out-block:last-child { margin-bottom: 0; }
-  .out-label {
-    font-size: 10px; font-weight: 500; text-transform: uppercase;
-    letter-spacing: 0.1em; color: var(--text3); margin-bottom: 8px;
-  }
-  .out-label span { color: var(--gold); margin-right: 6px; }
-  .output-box {
-    background: var(--bg3);
-    border: 0.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 14px 16px;
-    font-size: 12.5px;
-    line-height: 1.75;
-    color: var(--text);
-    white-space: pre-wrap;
-    word-break: break-word;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 300;
-  }
-  .copy-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px; padding: 6px 14px;
-    background: transparent;
-    border: 0.5px solid var(--border2);
-    border-radius: var(--radius-sm);
-    color: var(--text2); cursor: pointer;
-    margin-top: 8px; transition: all 0.15s;
-  }
-  .copy-btn:hover { border-color: var(--gold); color: var(--gold); }
-  .copy-btn.copied { border-color: var(--green); color: var(--green); }
+/* GEN BUTTON */
+.gen-btn{width:100%;padding:13px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;background:var(--gold-dim);color:var(--gold2);border:0.5px solid var(--gold-bdr);border-radius:var(--r);cursor:pointer;transition:background .15s;letter-spacing:.03em;max-width:960px;margin:0 auto 0;display:block}
+.gen-btn:hover{background:rgba(200,169,110,0.22)}
+.gen-wrap{padding:0 40px;max-width:960px;margin:0 auto 24px}
 
-  /* FOOTER */
-  .footer {
-    border-top: 0.5px solid var(--border);
-    padding: 20px 40px;
-    font-size: 11px;
-    color: var(--text3);
-    text-align: center;
-  }
+/* OUTPUT */
+.out-wrap{max-width:960px;margin:0 auto;padding:0 40px 60px}
+.out-section{display:none}
+.out-block{margin-bottom:18px}
+.out-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:7px}
+.out-label span{color:var(--gold);margin-right:6px}
+.output-box{background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--r-sm);padding:14px 16px;font-size:12px;line-height:1.8;color:var(--text);white-space:pre-wrap;word-break:break-word;font-family:'DM Sans',sans-serif;font-weight:300}
+.copy-btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 14px;background:transparent;border:0.5px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);cursor:pointer;margin-top:7px;transition:all .15s}
+.copy-btn:hover{border-color:var(--gold-bdr);color:var(--gold)}
+.copy-btn.copied{border-color:rgba(90,158,106,0.4);color:var(--green)}
 
-  @media (max-width: 640px) {
-    .header { padding: 20px; flex-direction: column; align-items: flex-start; }
-    .container { padding: 20px; }
-    .grid2, .grid3, .param-grid { grid-template-columns: 1fr; }
-    .style-grid { grid-template-columns: repeat(2, 1fr); }
-    .header-title { font-size: 22px; }
-  }
+/* FOOTER */
+.footer{border-top:0.5px solid var(--border);padding:18px 40px;font-size:11px;color:var(--text3);text-align:center}
+
+@media(max-width:700px){
+  .builder-wrap{grid-template-columns:1fr;padding:0 20px 40px}
+  .sidebar{position:static;max-height:none;padding-right:0;padding-top:0;display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px}
+  .group-label{width:100%}
+  .style-btn{border-left:none;border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:5px 10px;font-size:11.5px}
+  .style-btn.active{border-color:var(--gold)}
+  .sdiv{display:none}
+  .header,.top-form,.gen-wrap,.out-wrap{padding-left:20px;padding-right:20px}
+  .grid2,.grid3,.param-grid{grid-template-columns:1fr}
+  .sp-palette{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-left">
-    <div class="header-tag">Gemini Image Generation · Prompt Builder</div>
-    <div class="header-title">3D Floor Plan <em>Renderer</em></div>
-    <div class="header-sub">Tạo prompt chuẩn từ layout 2D → bóc mái 3D dollhouse · Kiểm soát lỗi cửa, hướng, thiết bị</div>
+  <div>
+    <div class="h-tag">Gemini Image Generation · Prompt Builder</div>
+    <div class="h-title">3D Floor Plan <em>Renderer</em></div>
+    <div class="h-sub">Layout 2D → Bóc mái 3D dollhouse · 19 phong cách nội thất · Kiểm soát lỗi cửa, hướng, thiết bị</div>
   </div>
-  <div class="header-badge">v1.0 · OneHousing</div>
+  <div class="h-badge">v2.0 · OneHousing</div>
 </div>
 
-<div class="container">
-
-  <!-- CĂN HỘ -->
+<div class="top-form">
   <div class="card">
     <div class="card-title">Thông tin căn hộ</div>
     <div class="grid3">
@@ -308,16 +153,16 @@
         <label>Loại căn</label>
         <select id="apt-type">
           <option value="Studio (open-plan, no separate bedroom, living and sleeping zone in one open space)">Studio</option>
-          <option value="1-bedroom">1 phòng ngủ</option>
-          <option value="2-bedroom">2 phòng ngủ</option>
-          <option value="3-bedroom" selected>3 phòng ngủ</option>
-          <option value="4-bedroom">4 phòng ngủ</option>
-          <option value="penthouse">Penthouse</option>
+          <option value="1-bedroom apartment">1 phòng ngủ</option>
+          <option value="2-bedroom apartment">2 phòng ngủ</option>
+          <option value="3-bedroom apartment" selected>3 phòng ngủ</option>
+          <option value="4-bedroom apartment">4 phòng ngủ</option>
+          <option value="penthouse apartment">Penthouse</option>
         </select>
       </div>
       <div class="field">
         <label>Diện tích tim tường (m²)</label>
-        <input id="area" value="105" placeholder="VD: 105" />
+        <input id="area" value="105" placeholder="VD: 105"/>
         <span class="hint">Gross floor area — tính từ mép ngoài tường bao</span>
       </div>
       <div class="field">
@@ -340,403 +185,833 @@
       <textarea id="layout-desc" placeholder="VD: 3PN 2WC, bếp mở thông phòng khách, 1 cửa chính góc trên phải, 2 cửa sổ lớn mặt tiền, máy giặt góc phải dưới..."></textarea>
     </div>
   </div>
+</div>
 
-  <!-- BƯỚC 1: PHONG CÁCH -->
-  <div class="card">
-    <div class="step-row"><div class="step-num">1</div><div class="step-text">Chọn phong cách nội thất</div></div>
-    <div class="style-grid" id="style-grid">
+<div class="builder-wrap">
+  <nav class="sidebar">
+    <div class="sidebar-title">Bước 1 — Chọn phong cách</div>
+    <div id="sidebar-nav"></div>
+  </nav>
 
-      <div class="scard active"
-        data-prompt="Luxury High-end interior: Carrara marble surfaces, brushed gold fixtures, deep walnut millwork, cream bouclé upholstery, rich layered textures, dramatic directional lighting">
-        <div class="scard-palette">
-          <div class="sw" style="background:#F5F0E8;"></div>
-          <div class="sw" style="background:#C8A96E;"></div>
-          <div class="sw" style="background:#4A3728;"></div>
-          <div class="sw" style="background:#E8DFD0;"></div>
+  <div class="right-col">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 18px 0;display:flex;align-items:center;gap:8px">
+        <div class="step-num">1</div>
+        <span class="step-text">Phong cách nội thất đã chọn</span>
+      </div>
+      <div style="padding:12px 18px 16px">
+        <div class="style-preview" id="style-preview">
+          <div class="sp-empty">← Chọn phong cách từ danh sách bên trái để xem preview và palette màu sắc</div>
         </div>
-        <div class="scard-body">
-          <div class="scard-name">Luxury / High-end</div>
-          <div class="scard-desc">Marble · gold · dark wood · bouclé</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="step-row"><div class="step-num">2</div><div class="step-text">Thông số render</div></div>
+      <div class="param-grid">
+        <div class="field">
+          <label>Góc nhìn</label>
+          <select id="view-angle">
+            <option value="45-degree top-down isometric cutaway architectural view" selected>Isometric 45°</option>
+            <option value="straight top-down bird's-eye architectural view (90-degree roofless layout)">Bird's eye 90°</option>
+            <option value="low-angle isometric cutaway architectural view (30-degree elevation)">Low isometric 30°</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Ánh sáng</label>
+          <select id="lighting">
+            <option value="natural daylight streaming from top-left, soft volumetric shadows">Tự nhiên ban ngày</option>
+            <option value="warm golden hour lighting, long soft cinematic shadows">Golden hour</option>
+            <option value="bright even studio lighting, minimal clean architectural shadows">Studio</option>
+            <option value="dramatic directional interior lighting, deep contrast, high-end luxury editorial look" selected>Dramatic high-end</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Chất lượng</label>
+          <select id="quality">
+            <option value="photorealistic 3D architectural render, ultra high details, ray-traced lighting, 8K resolution" selected>Photorealistic 8K</option>
+            <option value="high-quality 3D architectural visualization, crisp clean modern rendering">Arch-viz HD</option>
+            <option value="stylized 3D architectural illustration, clean minimal rendering">Stylized 3D</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Background</label>
+          <select id="bg">
+            <option value="isolated on a pure solid white background" selected>Trắng</option>
+            <option value="isolated on a soft solid light gray background">Xám nhạt</option>
+            <option value="isolated on a transparent cutout-ready background">Transparent</option>
+            <option value="isolated on a dark solid charcoal background">Charcoal tối</option>
+          </select>
         </div>
       </div>
 
-      <div class="scard"
-        data-prompt="Warm Modern interior: terracotta and rust accent tones, natural oak flooring, linen and jute textiles, warm neutral palette, organic curved forms, cosy layered atmosphere">
-        <div class="scard-palette">
-          <div class="sw" style="background:#E8D5B7;"></div>
-          <div class="sw" style="background:#E07B54;"></div>
-          <div class="sw" style="background:#C4A882;"></div>
-          <div class="sw" style="background:#F0E6D3;"></div>
-        </div>
-        <div class="scard-body">
-          <div class="scard-name">Warm Modern</div>
-          <div class="scard-desc">Terracotta · oak · linen · warm neutral</div>
-        </div>
+      <div class="divider"></div>
+
+      <div style="display:flex;align-items:center;margin-bottom:12px">
+        <span style="font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)">Constraint cố định</span>
+        <span class="badge badge-always">Luôn bật</span>
+      </div>
+      <div class="c-list">
+        <div class="c-row"><span class="c-icon">🔒</span>Tường, vách ngăn, cột kết cấu giữ 100% theo layout gốc — không sai lệch</div>
+        <div class="c-row"><span class="c-icon">🚪</span>Cửa ra vào: đếm đúng số lượng, đặt đúng vị trí, mỗi cửa xuất hiện đúng 1 lần — không nhân đôi, không bỏ sót</div>
+        <div class="c-row"><span class="c-icon">🪟</span>Cửa sổ: đếm đúng số lượng, đặt đúng vị trí tường, kích thước tương đối khớp layout</div>
+        <div class="c-row"><span class="c-icon">↔️</span>Hướng cánh cửa khớp layout: inward/outward, left-hinge/right-hinge — không mirror, không xoay</div>
+        <div class="c-row"><span class="c-icon">🫙</span>Thiết bị (máy giặt, bếp, toilet, bồn tắm, tủ lạnh): đúng vị trí, mặt chức năng hướng lên — không lật, không nghiêng</div>
+        <div class="c-row"><span class="c-icon">🛋️</span>Logic nội thất: headboard sát tường, sofa hướng TV, bàn ăn giữa dining zone, bàn làm việc sát/gần tường — không chặn cửa hoặc lối đi</div>
+        <div class="c-row"><span class="c-icon">🏠</span>Số phòng cố định — không gộp, không tách, không thêm, không bớt</div>
+        <div class="c-row"><span class="c-icon">📐</span>Tỉ lệ không gian giữ đúng: phòng lớn hơn trong layout phải lớn hơn trong 3D</div>
       </div>
 
-      <div class="scard"
-        data-prompt="Japandi Minimalist interior: white and off-white walls, light ash and birch wood, matte textures, deliberate negative space, low-profile furniture, wabi-sabi calm aesthetic">
-        <div class="scard-palette">
-          <div class="sw" style="background:#F7F5F0;"></div>
-          <div class="sw" style="background:#D4CFC6;"></div>
-          <div class="sw" style="background:#B5A898;"></div>
-          <div class="sw" style="background:#ECEAE4;"></div>
-        </div>
-        <div class="scard-body">
-          <div class="scard-name">Japandi</div>
-          <div class="scard-desc">White · ash wood · matte · minimal</div>
-        </div>
+      <div style="display:flex;align-items:center;margin-top:16px;margin-bottom:12px">
+        <span style="font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)">Constraint tùy chọn</span>
+        <span class="badge badge-opt">Bật / Tắt</span>
       </div>
-
-      <div class="scard"
-        data-prompt="Art Deco interior: bold geometric patterns, lacquered surfaces in black and ivory, polished brass and chrome accents, velvet upholstery in jewel tones, symmetrical grand composition">
-        <div class="scard-palette">
-          <div class="sw" style="background:#1A1A1A;"></div>
-          <div class="sw" style="background:#C8A96E;"></div>
-          <div class="sw" style="background:#F5F0E0;"></div>
-          <div class="sw" style="background:#4A2040;"></div>
-        </div>
-        <div class="scard-body">
-          <div class="scard-name">Art Deco</div>
-          <div class="scard-desc">Geometric · brass · velvet · lacquer</div>
-        </div>
+      <div class="c-list">
+        <label class="c-row opt"><input type="checkbox" id="c6"> Không thêm balcony / loggia nếu không có trong layout</label>
+        <label class="c-row opt"><input type="checkbox" id="c7"> Không thêm cây xanh / plants ngoài những gì đã mô tả</label>
+        <label class="c-row opt"><input type="checkbox" id="c8"> Không thêm artwork hoặc trang trí tường không có trong mô tả</label>
+        <label class="c-row opt"><input type="checkbox" id="c9"> Không thay đổi màu sàn / màu tường giữa các phòng</label>
       </div>
-
-      <div class="scard"
-        data-prompt="Coastal Luxury interior: travertine stone surfaces, bleached oak flooring, natural linen drapery, palette of sand, ivory and soft sage, rattan and organic woven textures, airy light-filled atmosphere">
-        <div class="scard-palette">
-          <div class="sw" style="background:#E8E0D0;"></div>
-          <div class="sw" style="background:#C8B89A;"></div>
-          <div class="sw" style="background:#A8B89A;"></div>
-          <div class="sw" style="background:#D8E0D8;"></div>
-        </div>
-        <div class="scard-body">
-          <div class="scard-name">Coastal Luxury</div>
-          <div class="scard-desc">Travertine · linen · sage · rattan</div>
-        </div>
-      </div>
-
-      <div class="scard"
-        data-prompt="Neo-Classical interior: ornate crown mouldings, herringbone parquet floors, tufted upholstery, antique brass hardware, symmetrical layout, grand European proportions, timeless elegance">
-        <div class="scard-palette">
-          <div class="sw" style="background:#F2EDE0;"></div>
-          <div class="sw" style="background:#B8860B;"></div>
-          <div class="sw" style="background:#8B7355;"></div>
-          <div class="sw" style="background:#D4C5A8;"></div>
-        </div>
-        <div class="scard-body">
-          <div class="scard-name">Neo-Classic</div>
-          <div class="scard-desc">Moulding · parquet · tufted · brass</div>
-        </div>
-      </div>
-
-      <div class="scard"
-        data-prompt="Contemporary Industrial interior: exposed concrete walls and ceiling, steel-frame furniture and partitions, dark moody palette, Edison-style pendant lighting, raw material textures throughout">
-        <div class="scard-palette">
-          <div class="sw" style="background:#4A4A48;"></div>
-          <div class="sw" style="background:#7A7A78;"></div>
-          <div class="sw" style="background:#2C2C2A;"></div>
-          <div class="sw" style="background:#9A8870;"></div>
-        </div>
-        <div class="scard-body">
-          <div class="scard-name">Industrial</div>
-          <div class="scard-desc">Concrete · steel · dark · raw</div>
-        </div>
-      </div>
-
-      <div class="scard"
-        data-prompt="Wabi-Sabi interior: imperfect natural textures, aged plaster walls, raw unfinished linen, handcrafted ceramic and pottery, muted earthy tones, unfinished wood, quiet organic atmosphere celebrating imperfection">
-        <div class="scard-palette">
-          <div class="sw" style="background:#D8CFC0;"></div>
-          <div class="sw" style="background:#B8A890;"></div>
-          <div class="sw" style="background:#987868;"></div>
-          <div class="sw" style="background:#E8E0D4;"></div>
-        </div>
-        <div class="scard-body">
-          <div class="scard-name">Wabi-Sabi</div>
-          <div class="scard-desc">Aged plaster · ceramic · earthy · raw</div>
-        </div>
-      </div>
-
     </div>
   </div>
+</div>
 
-  <!-- BƯỚC 2: MÀU SẮC -->
-  <div class="card">
-    <div class="step-row"><div class="step-num">2</div><div class="step-text">Chọn màu chủ đạo</div></div>
-
-    <div class="col-label">Màu tường & không gian</div>
-    <div class="color-row">
-      <div class="cswatch" style="background:#F5F0E8;" data-cat="wall" data-name="Ivory warm" data-hex="#F5F0E8" title="Ivory warm"></div>
-      <div class="cswatch" style="background:#E8E0D5;" data-cat="wall" data-name="Greige" data-hex="#E8E0D5" title="Greige"></div>
-      <div class="cswatch" style="background:#D4C5B0;" data-cat="wall" data-name="Sand beige" data-hex="#D4C5B0" title="Sand beige"></div>
-      <div class="cswatch" style="background:#C9B99A;" data-cat="wall" data-name="Warm taupe" data-hex="#C9B99A" title="Warm taupe"></div>
-      <div class="cswatch" style="background:#F7F7F5;outline:0.5px solid #333;" data-cat="wall" data-name="Pure white" data-hex="#F7F7F5" title="Pure white"></div>
-      <div class="cswatch" style="background:#F0EBE3;" data-cat="wall" data-name="Off-white" data-hex="#F0EBE3" title="Off-white"></div>
-      <div class="cswatch" style="background:#E8EDE8;" data-cat="wall" data-name="Sage mist" data-hex="#E8EDE8" title="Sage mist"></div>
-      <div class="cswatch" style="background:#D6E0E0;" data-cat="wall" data-name="Pale teal" data-hex="#D6E0E0" title="Pale teal"></div>
-      <div class="cswatch" style="background:#1C2B3A;" data-cat="wall" data-name="Deep navy" data-hex="#1C2B3A" title="Deep navy"></div>
-      <div class="cswatch" style="background:#2C2C2A;" data-cat="wall" data-name="Charcoal" data-hex="#2C2C2A" title="Charcoal"></div>
-      <div class="cswatch" style="background:#3D2B1F;" data-cat="wall" data-name="Dark espresso" data-hex="#3D2B1F" title="Dark espresso"></div>
-      <div class="cswatch" style="background:#8B9E8A;" data-cat="wall" data-name="Olive green" data-hex="#8B9E8A" title="Olive green"></div>
-    </div>
-
-    <div class="col-label">Màu accent & nội thất</div>
-    <div class="color-row">
-      <div class="cswatch" style="background:#C8A96E;" data-cat="accent" data-name="Brushed gold" data-hex="#C8A96E" title="Brushed gold"></div>
-      <div class="cswatch" style="background:#B8860B;" data-cat="accent" data-name="Antique brass" data-hex="#B8860B" title="Antique brass"></div>
-      <div class="cswatch" style="background:#E8D5B7;" data-cat="accent" data-name="Champagne" data-hex="#E8D5B7" title="Champagne"></div>
-      <div class="cswatch" style="background:#C0C0C0;" data-cat="accent" data-name="Silver chrome" data-hex="#C0C0C0" title="Silver chrome"></div>
-      <div class="cswatch" style="background:#1A1A1A;" data-cat="accent" data-name="Matte black" data-hex="#1A1A1A" title="Matte black"></div>
-      <div class="cswatch" style="background:#6B3A2A;" data-cat="accent" data-name="Dark walnut" data-hex="#6B3A2A" title="Dark walnut"></div>
-      <div class="cswatch" style="background:#C4A882;" data-cat="accent" data-name="Warm oak" data-hex="#C4A882" title="Warm oak"></div>
-      <div class="cswatch" style="background:#E07B54;" data-cat="accent" data-name="Terracotta" data-hex="#E07B54" title="Terracotta"></div>
-      <div class="cswatch" style="background:#8B6F5E;" data-cat="accent" data-name="Clay brown" data-hex="#8B6F5E" title="Clay brown"></div>
-      <div class="cswatch" style="background:#4A6741;" data-cat="accent" data-name="Forest green" data-hex="#4A6741" title="Forest green"></div>
-      <div class="cswatch" style="background:#1B4B6B;" data-cat="accent" data-name="Sapphire blue" data-hex="#1B4B6B" title="Sapphire blue"></div>
-      <div class="cswatch" style="background:#722F37;" data-cat="accent" data-name="Deep burgundy" data-hex="#722F37" title="Deep burgundy"></div>
-    </div>
-
-    <div class="col-label">Palette đã chọn</div>
-    <div class="palette-preview" id="palette-preview">
-      <span class="pal-none">Chưa chọn màu nào</span>
-    </div>
-  </div>
-
-  <!-- BƯỚC 3: RENDER & CONSTRAINT -->
-  <div class="card">
-    <div class="step-row"><div class="step-num">3</div><div class="step-text">Thông số render</div></div>
-    <div class="param-grid" style="margin-bottom:20px;">
-      <div class="field">
-        <label>Góc nhìn</label>
-        <select id="view-angle">
-          <option value="45-degree top-down isometric" selected>Isometric 45°</option>
-          <option value="straight top-down bird's-eye (90°)">Bird's eye 90°</option>
-          <option value="low isometric (30°)">Low isometric 30°</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Ánh sáng</label>
-        <select id="lighting">
-          <option value="natural daylight from top-left, soft shadows">Tự nhiên ban ngày</option>
-          <option value="warm golden hour lighting, long soft shadows">Golden hour</option>
-          <option value="bright even studio lighting, minimal shadows">Studio</option>
-          <option value="dramatic directional lighting, deep contrast, luxury editorial feel" selected>Dramatic high-end</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Chất lượng</label>
-        <select id="quality">
-          <option value="photorealistic 3D render, ultra high detail, 8K resolution" selected>Photorealistic 8K</option>
-          <option value="high-quality 3D architectural visualization">Arch-viz HD</option>
-          <option value="stylized 3D illustration, clean rendering">Stylized 3D</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Background</label>
-        <select id="bg">
-          <option value="pure white background" selected>Trắng</option>
-          <option value="soft light gray background">Xám nhạt</option>
-          <option value="transparent cutout background">Transparent</option>
-          <option value="dark charcoal background">Charcoal tối</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div style="display:flex;align-items:center;margin-bottom:12px;">
-      <span style="font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);">Constraint cố định</span>
-      <span class="badge badge-always">Luôn bật</span>
-    </div>
-    <div class="constraint-list">
-      <div class="c-row fixed"><span class="c-icon">🔒</span> Tường, vách ngăn, cột kết cấu giữ 100% theo layout gốc — không sai lệch</div>
-      <div class="c-row fixed"><span class="c-icon">🚪</span> Cửa ra vào: đếm đúng số lượng, đặt đúng vị trí, mỗi cửa xuất hiện đúng 1 lần — không nhân đôi, không bỏ sót</div>
-      <div class="c-row fixed"><span class="c-icon">🪟</span> Cửa sổ: đếm đúng số lượng, đặt đúng vị trí tường, kích thước tương đối khớp layout</div>
-      <div class="c-row fixed"><span class="c-icon">↔️</span> Hướng cánh cửa khớp layout: inward/outward, left-hinge/right-hinge — không mirror, không xoay</div>
-      <div class="c-row fixed"><span class="c-icon">🫙</span> Thiết bị (máy giặt, bếp, toilet, bồn tắm, tủ lạnh): đúng vị trí, mặt chức năng hướng lên — không lật, không nghiêng</div>
-      <div class="c-row fixed"><span class="c-icon">🛋️</span> Logic nội thất: headboard sát tường, sofa hướng TV, bàn ăn giữa dining zone, bàn làm việc sát/gần tường</div>
-      <div class="c-row fixed"><span class="c-icon">🏠</span> Số phòng cố định — không gộp, không tách, không thêm, không bớt</div>
-      <div class="c-row fixed"><span class="c-icon">📐</span> Tỉ lệ không gian giữ đúng: phòng lớn hơn trong layout phải lớn hơn trong 3D</div>
-    </div>
-
-    <div style="display:flex;align-items:center;margin-top:18px;margin-bottom:12px;">
-      <span style="font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);">Constraint tùy chọn</span>
-      <span class="badge badge-opt">Bật / Tắt</span>
-    </div>
-    <div class="constraint-list">
-      <label class="c-row opt"><input type="checkbox" id="c6"> Không thêm balcony / loggia nếu không có trong layout</label>
-      <label class="c-row opt"><input type="checkbox" id="c7"> Không thêm cây xanh / plants ngoài những gì đã mô tả</label>
-      <label class="c-row opt"><input type="checkbox" id="c8"> Không thêm artwork hoặc trang trí tường không có trong mô tả</label>
-      <label class="c-row opt"><input type="checkbox" id="c9"> Không thay đổi màu sàn / màu tường giữa các phòng</label>
-    </div>
-  </div>
-
+<div class="gen-wrap">
   <button class="gen-btn" onclick="generatePrompt()">✦ &nbsp;Tạo Prompt</button>
+</div>
 
-  <!-- OUTPUT -->
+<div class="out-wrap">
   <div class="out-section" id="out-section">
     <div class="card">
       <div class="card-title">Output — 3 prompt sẵn dùng</div>
-
       <div class="out-block">
-        <div class="out-label"><span>①</span> Main Prompt — dán kèm ảnh layout 2D vào Gemini</div>
+        <div class="out-label"><span>①</span>Main Prompt — dán kèm ảnh layout 2D vào Gemini</div>
         <div class="output-box" id="main-prompt"></div>
-        <button class="copy-btn" onclick="copyText('main-prompt', this, 'Copy main prompt')">⎘&nbsp; Copy main prompt</button>
+        <button class="copy-btn" onclick="copyText('main-prompt',this)">⎘&nbsp;Copy main prompt</button>
       </div>
-
       <div class="divider"></div>
-
       <div class="out-block">
-        <div class="out-label"><span>②</span> Negative Prompt — dán vào ô "What to avoid" nếu Gemini có</div>
+        <div class="out-label"><span>②</span>Negative Prompt — dán vào ô "What to avoid" nếu Gemini có</div>
         <div class="output-box" id="neg-prompt"></div>
-        <button class="copy-btn" onclick="copyText('neg-prompt', this, 'Copy negative prompt')">⎘&nbsp; Copy negative prompt</button>
+        <button class="copy-btn" onclick="copyText('neg-prompt',this)">⎘&nbsp;Copy negative prompt</button>
       </div>
-
       <div class="divider"></div>
-
       <div class="out-block">
-        <div class="out-label"><span>③</span> Fix Prompt — khi kết quả sai, điền lỗi cụ thể vào [...] rồi dùng</div>
+        <div class="out-label"><span>③</span>Fix Prompt — khi kết quả sai, điền lỗi cụ thể vào [...] rồi dùng</div>
         <div class="output-box" id="fix-prompt"></div>
-        <button class="copy-btn" onclick="copyText('fix-prompt', this, 'Copy fix prompt')">⎘&nbsp; Copy fix prompt</button>
+        <button class="copy-btn" onclick="copyText('fix-prompt',this)">⎘&nbsp;Copy fix prompt</button>
       </div>
     </div>
   </div>
-
 </div>
 
-<div class="footer">3D Floor Plan Prompt Builder · Gemini · Built for OneHousing</div>
+<div class="footer">3D Floor Plan Prompt Builder · Gemini · v2.0 · Integrated Style Library · OneHousing</div>
 
 <script>
-let selStyle = {
-  prompt: 'Luxury High-end interior: Carrara marble surfaces, brushed gold fixtures, deep walnut millwork, cream bouclé upholstery, rich layered textures, dramatic directional lighting'
+/* ================================================================
+   STYLE LIBRARY DATA (19 phong cách / biến thể hoàn chỉnh)
+   ================================================================ */
+const STYLE_GROUPS = [
+  {
+    group: "Tối giản",
+    styles: [
+      { key: "min_soft",  label: "Soft Minimalism" },
+      { key: "min_warm",  label: "Warm Minimalism" },
+      { key: "min_mono",  label: "Monochrome Minimalism" }
+    ]
+  },
+  {
+    group: "Bắc Âu",
+    styles: [
+      { key: "scan_classic", label: "Classic Scandinavian" },
+      { key: "scan_hygge",   label: "Hygge Scandinavian" }
+    ]
+  },
+  {
+    group: "Hiện đại",
+    styles: [
+      { key: "mod_contemporary", label: "Contemporary Modern" },
+      { key: "mod_warm",         label: "Warm Modern" }
+    ]
+  },
+  {
+    group: "Đài Loan",
+    styles: [
+      { key: "tw_warm", label: "Taiwan Warm Modern" },
+      { key: "tw_dark", label: "Dark Taiwanese Minimalism" }
+    ]
+  },
+  {
+    group: "Đông Dương",
+    styles: [
+      { key: "indo_contemporary", label: "Contemporary Indochine" },
+      { key: "indo_luxury",       label: "Luxury Indochine" }
+    ]
+  },
+  {
+    group: "Công nghiệp",
+    styles: [
+      { key: "ind_raw", label: "Raw Industrial — Refined" }
+    ]
+  },
+  {
+    group: "Luxury",
+    styles: [
+      { key: "lux_modern",       label: "Dark Modern Luxury" },
+      { key: "lux_modern_light", label: "Light Modern Luxury" },
+      { key: "lux_classic",      label: "Neo-Palatial Classic" },
+      { key: "lux_ind",          label: "Industrial Luxury" },
+      { key: "lux_min",          label: "Minimal Luxury" }
+    ]
+  },
+  {
+    group: "Phong cách tinh tế",
+    styles: [
+      { key: "wabi",    label: "Wabi Sabi" },
+      { key: "japandi", label: "Japandi" }
+    ]
+  },
+  {
+    group: "Tân cổ điển",
+    styles: [
+      { key: "neocl_restrained", label: "Restrained Neo-Classical" }
+    ]
+  },
+  {
+    group: "Khác",
+    styles: [
+      { key: "rustic", label: "Refined Rustic" },
+      { key: "retro",  label: "Mid-Century Retro" }
+    ]
+  }
+];
+
+const STYLES = {
+  min_soft:{
+    name:"Minimalism",variant:"Soft Minimalism",mood:["quiet","airy","soft","restrained","serene"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#F5F3EF",label:"Off-white / warm white",note:"Walls, large cabinetry, ceilings"},
+      {role:"Secondary (30%)",hex:"#D6C9B8",label:"Warm greige",note:"Flooring, timber joinery, large upholstery"},
+      {role:"Accent (10%)",hex:"#4A4A4A",label:"Charcoal matte",note:"Small furniture details, hardware, thin frames only"}
+    ],
+    primaryMat:["Smooth matte-plastered walls — warm white, no sheen","Light oak or ash flooring — minimal visible grain","Large-format matte ceramic tile in wet areas"],
+    secondaryMat:["Linen or cotton textiles — undyed or natural","Matte white lacquer joinery","Thin powder-coated metal frames — matte black or warm grey"],accentMat:["Single natural stone accent surface (honed, not polished)"],
+    formLang:["Flat planes with no visible joints or handles","Recessed grip cabinetry doors","Low-profile furniture with slim legs","Rectangular geometry only — no decorative curves"],
+    walls:"Smooth matte plaster — no texture. No mouldings, no panelling, no wall breaks. Single colour field throughout.",
+    floors:"Light oak or ash-look flooring in seamless long planks. Matching matte porcelain in bathrooms.",
+    ceiling:"Flat plaster ceiling, matte white. Recessed LED only — ultra-slim, frameless. No pendant. No exposed bulb.",
+    furniture:"Built-in cabinetry with flush recessed handles, floor-to-ceiling where possible. Freestanding furniture: low profile, slim legs, rectangular. No decorative stitching or visible hardware.",
+    textiles:"Linen curtains — full height, sheer or semi-sheer. One flat-woven rug per room. Cushions in tone-on-tone only.",decorDensity:"Minimal",
+    allowedDecor:["One small plant (single stem or simple pot)","One ceramic vessel (no pattern)","No stacked objects, no books, no art clusters"],
+    rooms:{living:"Low sofa, single coffee table, no side tables. Curtains floor-to-ceiling. Rug defines zone.",kitchen:"Flush handleless cabinetry, integrated appliances. Stone countertop — honed. No open shelving.",bedroom:"Low platform bed, no headboard or minimal upholstered slab. Two bedside surfaces, no legs visible.",bathroom:"Freestanding basin or wall-hung. Large-format tile. No accessories visible. Recessed niche for storage.",utility:"Keep entirely blank. No decor."},
+    avoid:["Exposed shelving with objects","Patterned textiles","Decorative mouldings","Multiple light sources per room","Glossy surfaces","Any colour that is not in the approved palette","Visible cables or appliances"],
+    cutaway:"Show only recessed ceiling lights as small circles. No pendant. No ceiling structure. Prioritise layout legibility."
+  },
+  min_warm:{
+    name:"Minimalism",variant:"Warm Minimalism",mood:["warm","grounded","calm","earthy","uncluttered"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#EDE6D8",label:"Warm sand / warm cream",note:"Walls, large surfaces, ceiling"},
+      {role:"Secondary (30%)",hex:"#A0846A",label:"Warm tawny oak",note:"Flooring, timber joinery, large furniture"},
+      {role:"Accent (10%)",hex:"#3B2E24",label:"Deep warm brown",note:"Hardware, small items, thin details only"}
+    ],
+    primaryMat:["Warm sand matte plaster — slightly textured","Medium-tone warm oak flooring — oiled, matte","Honed warm-toned stone in kitchen and bathroom"],
+    secondaryMat:["Natural linen upholstery — undyed","Woven rattan or rush","Unglazed ceramic"],accentMat:["Dark bronze or raw brass hardware — no shine"],
+    formLang:["Soft rectangular volumes with slightly rounded corners","Low-profile furniture","Organic edges on tables","No sharp geometric detailing"],
+    walls:"Warm sand matte plaster, very light texture. No mouldings. Possibly one feature wall in a tone-on-tone textured plaster.",
+    floors:"Warm oak flooring — oiled finish, minimal grain contrast. Continuous into open-plan zones.",
+    ceiling:"Flat, warm white. Recessed LED or simple pendant in natural material (woven, ceramic). No cove light.",
+    furniture:"Solid wood — rounded corners, no veneer. Upholstery in undyed linen. Built-in cabinetry warm oak or painted warm white.",
+    textiles:"Linen, wool, or cotton throws. Earth-tone cushions (ochre, rust, clay). Flat-weave jute rug.",decorDensity:"Moderate",
+    allowedDecor:["2–3 ceramic vessels","One low plant (pothos or single-stem)","One wooden tray or cutting board as surface decor","Thin-framed art (one per room)"],
+    rooms:{living:"Low sofa in warm linen. Wooden coffee table — rounded corners. Jute rug. One floor lamp.",kitchen:"Warm oak cabinetry, flush or simple bar handle. Honed stone countertop. No open shelving.",bedroom:"Platform bed, upholstered headboard in linen. Warm oak nightstands. Linen curtains.",bathroom:"Warm stone tile, wall-hung or vessel basin. Wooden accessories. Matte warm hardware.",utility:"Neutral, no decor."},
+    avoid:["Cool grey tones","Chrome or silver hardware","Glossy or polished surfaces","Patterned textiles","Ornate furniture","Visible clutter"],
+    cutaway:"Warm ambient light implied through wall colour. Show one pendant in living area if visible. No ceiling structure details."
+  },
+  min_mono:{
+    name:"Minimalism",variant:"Monochrome Minimalism",mood:["precise","composed","silent","graphic","absolute"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#EDEDED",label:"Pure light grey",note:"Walls, ceiling, all large surfaces"},
+      {role:"Secondary (30%)",hex:"#AAAAAA",label:"Mid grey",note:"Flooring, joinery faces"},
+      {role:"Accent (10%)",hex:"#1A1A1A",label:"Near black",note:"Thin frames, hardware, single detail per room"}
+    ],
+    primaryMat:["Smooth fine-plaster walls — pure grey, zero sheen","Large-format grey porcelain tile — honed, full field","Matte grey lacquer cabinetry"],
+    secondaryMat:["Poured concrete or concrete-look surface","Dark charcoal upholstery","Matte black powder-coated metal"],accentMat:["One natural stone slab — grey-veined (no colour)"],
+    formLang:["Pure rectangular geometry","Flush surfaces, no relief","Hairline joints only","Ultra-slim hardware or no hardware"],
+    walls:"Smooth plaster, pure grey field. Zero decoration. No mouldings, no texture break.",
+    floors:"Continuous large-format grey porcelain — honed, no gloss. No grout line visible if possible.",
+    ceiling:"Flat, same grey-white as walls. Recessed LED only. No fixture visible.",
+    furniture:"Matte lacquer or stone-faced built-ins. Freestanding furniture in charcoal or matching grey. No wood grain visible.",
+    textiles:"Single flat-weave rug in grey. Curtains — blackout in off-white or pale grey. No pattern.",decorDensity:"Minimal",
+    allowedDecor:["One dark ceramic vessel","No plants","No art","No objects on surfaces"],
+    rooms:{living:"Grey sofa, stone or lacquer table, no side tables. One rug. No art.",kitchen:"Full grey lacquer, integrated appliances. Stone countertop in matching grey vein.",bedroom:"Platform bed, upholstered headboard in charcoal or grey. Blackout curtains.",bathroom:"Full grey porcelain — walls and floor. Wall-hung fixtures. No accessories visible.",utility:"Keep blank."},
+    avoid:["Any warm tone (beige, cream, brown)","Any colour accent","Wood grain","Decorative objects","Patterned surfaces","Visible hardware knobs"],
+    cutaway:"No ceiling visible. Prioritise showing the full grey field of walls and floor. Lighting implied, not shown."
+  },
+  scan_classic:{
+    name:"Scandinavian",variant:"Classic Scandinavian",mood:["fresh","light","functional","honest","Nordic"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#FAFAF8",label:"Snow white",note:"Walls, ceiling, large cabinetry"},
+      {role:"Secondary (30%)",hex:"#E0D9CC",label:"Warm birch / pale ash",note:"Flooring, timber accents, large furniture"},
+      {role:"Accent (10%)",hex:"#7EA8C4",label:"Muted slate blue",note:"Cushions, one chair, a single textile — nowhere else"}
+    ],
+    primaryMat:["White painted smooth plaster — no sheen","Light ash or birch flooring — oiled, pale","Matte white lacquer cabinetry"],
+    secondaryMat:["Natural wool or cotton textiles","Woven basket or rattan accessories","Unglazed white or grey ceramic"],accentMat:["Muted slate blue textile only"],
+    formLang:["Slim turned wooden legs","Light rectangular frames","Simple bow-back or wishbone chair form","No ornament, no applied decoration"],
+    walls:"Matte white plaster, smooth. No mouldings. Possible single light-grey feature wall — same plaster finish.",
+    floors:"Pale ash or birch flooring — tight grain, minimal knots. Matching pale wood skirting.",
+    ceiling:"Flat white. Simple pendant — linen drum, woven rattan, or birch-and-wire. No heavy chandelier.",
+    furniture:"Solid ash, birch or pine — slim profiles, low to mid height. Upholstery in natural wool or cotton. No MDF veneer visible.",
+    textiles:"Wool throw, cotton cushions in white/cream/grey. One short-pile wool rug — natural colours only.",decorDensity:"Moderate",
+    allowedDecor:["1–2 small plants (trailing or simple)","One ceramic vase in white or grey","Thin-framed art (black/white photography or simple line)","One basket"],
+    rooms:{living:"Slim-leg sofa, wishbone or simple lounge chair, coffee table in pale wood. Pendant lamp. Wool rug.",kitchen:"White or pale wood cabinetry, simple bar handles. Light stone or white laminate counter. Open shelf limited to one short run.",bedroom:"Platform or simple bed with fabric headboard — natural linen. Slim bedside tables.",bathroom:"White tile, wall-hung basin. Teak or bamboo accessories. Simple round mirror.",utility:"Keep bare."},
+    avoid:["Dark wood (walnut, wenge)","Gold or brass hardware","Glossy surfaces","Ornamental detailing","Strong colour on walls or large furniture","Tropical plants (monstera, fiddle leaf)"],
+    cutaway:"Show pendant light clearly. Pale wood flooring creates strong horizontal legibility. Keep walls white as field."
+  },
+  scan_hygge:{
+    name:"Scandinavian",variant:"Hygge Scandinavian",mood:["cosy","layered","warm","inviting","intimate"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#F4EFE6",label:"Warm cream",note:"Walls, ceiling, main surfaces"},
+      {role:"Secondary (30%)",hex:"#C8B49A",label:"Honey pine",note:"Flooring, timber, natural furniture"},
+      {role:"Accent (10%)",hex:"#5C7A6A",label:"Muted sage green",note:"Textiles, one accent piece — used sparingly"}
+    ],
+    primaryMat:["Warm cream matte plaster","Honey-toned pine or pale oak flooring","Smooth white or off-white cabinetry"],
+    secondaryMat:["Chunky knit wool or fleece textiles","Natural sheepskin or faux-sheepskin","Wicker or willow baskets"],accentMat:["Muted sage textile accent"],
+    formLang:["Soft curves on upholstery","Slim turned legs","Low to mid-height furniture","Rounded cushion forms","Relaxed, slightly informal arrangement"],
+    walls:"Warm cream matte. One wall in a soft grey-green as feature — same low sheen.",
+    floors:"Honey pine or pale oak — wide plank, oiled. Short-pile or long-pile rug layered over.",
+    ceiling:"Off-white. Statement pendant — oversized linen drum or wicker globe. Candle-light tone LED strongly preferred.",
+    furniture:"Soft upholstered pieces — rounded arms, plump cushions. Pale or honey wood. Mix of floor cushions and layered textiles.",
+    textiles:"Chunky knit throws, sheepskin rug, layered cushions. Multiple textiles layered intentionally.",decorDensity:"Layered",
+    allowedDecor:["Multiple candles or candle holders","2–3 plants","Stacked books","Baskets","Ceramic vessels in natural tones","Framed prints — soft subject matter"],
+    rooms:{living:"Deep sofa with layered cushions and throw. Floor lamp. Coffee table with tray, candles, one plant. Layered rugs acceptable.",kitchen:"Warm wood + white combination. Open shelf with ceramics and plants. Linen curtain.",bedroom:"High-comfort bed — linen and chunky knit. Bedside lamp in warm tone. Draped throw.",bathroom:"Warm cream tile. Wooden bath tray. Candles. Organic accessories.",utility:"Keep simple."},
+    avoid:["Cold grey tones","Chrome hardware","Minimalist bare surfaces","Industrial materials","Geometric abstract art"],
+    cutaway:"Show warm layered textiles and pendant light. Rich material layering creates depth in cutaway view."
+  },
+  mod_contemporary:{
+    name:"Modern",variant:"Contemporary Modern",mood:["clean","confident","neutral","refined","current"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#F2F0EC",label:"Warm white / greige",note:"Walls, ceiling, large cabinetry"},
+      {role:"Secondary (30%)",hex:"#8C7B6E",label:"Warm mid brown",note:"Flooring, joinery, medium furniture"},
+      {role:"Accent (10%)",hex:"#2C2C2C",label:"Charcoal",note:"Hardware, frame details, thin linear accents"}
+    ],
+    primaryMat:["Smooth matte plaster — warm white","Large-format porcelain — warm grey or stone look","Matte lacquer cabinetry — warm white or greige"],
+    secondaryMat:["Engineered oak or walnut-look flooring","Brushed nickel or matte black hardware","Stone or quartz countertop — honed"],accentMat:["Thin metal frame in matte black"],
+    formLang:["Clean straight lines","Flat horizontal and vertical planes","No decorative elements applied to surfaces","Integrated handles or recessed grip"],
+    walls:"Matte smooth plaster — warm greige. No mouldings. Possible accent wall in a slightly deeper greige.",
+    floors:"Engineered oak mid-tone, or large-format grey stone-look porcelain. Continuous across open plan.",
+    ceiling:"Flat. Recessed LED grid or cove light at perimeter. Simple pendant acceptable in dining zone.",
+    furniture:"Low-to-mid profile. Clean rectangular forms. Upholstery in neutral performance fabric. No visible decorative stitching.",
+    textiles:"Neutral cushions — greige, stone, warm white. One flat-weave rug. Sheer or semi-sheer linen curtains.",decorDensity:"Moderate",
+    allowedDecor:["Grouped ceramics (2–3)","Architectural plant (olive, ficus, or single stem in tall vase)","One piece of framed art per room","Coffee table tray with 2–3 objects maximum"],
+    rooms:{living:"Clean-lined sofa, lounge chair, low coffee table. Rug defines zone. One pendant or arc floor lamp.",kitchen:"Flat-door cabinetry — integrated handles. Stone countertop. Integrated rangehood.",bedroom:"Upholstered headboard — neutral. Platform bed. Built-in wardrobe flush to wall.",bathroom:"Large-format tile walls and floor. Wall-hung vanity. Brushed nickel or matte black fixtures.",utility:"Neutral."},
+    avoid:["Ornamental mouldings","Shiny chrome","Patterned wallpaper","Rustic or industrial elements","Tropical or cluttered decor"],
+    cutaway:"Cove light or recessed grid implied at ceiling perimeter. Furniture scaled accurately. Stone-look surfaces create visual continuity."
+  },
+  mod_warm:{
+    name:"Modern",variant:"Warm Modern",mood:["inviting","grounded","sophisticated","liveable","edited"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#EBE1D3",label:"Warm sand",note:"Walls, ceiling, cabinetry"},
+      {role:"Secondary (30%)",hex:"#9B7B5C",label:"Medium warm walnut",note:"Flooring, timber joinery"},
+      {role:"Accent (10%)",hex:"#5B4A3C",label:"Deep warm brown",note:"Hardware, one chair, small details"}
+    ],
+    primaryMat:["Warm sand matte plaster","Medium-tone walnut veneer or solid walnut","Honed travertine or sand-toned stone"],
+    secondaryMat:["Boucle or textured wool upholstery","Leather in warm tan or cognac","Natural linen drapes"],accentMat:["Brushed bronze or antique brass hardware"],
+    formLang:["Rounded corners on furniture","Soft organic edges","Low to mid height","Generous proportions — not bulky"],
+    walls:"Warm sand matte plaster. One feature wall in a deeper sand or travertine panel.",
+    floors:"Medium walnut or warm oak engineered timber. Continuous plank.",
+    ceiling:"Off-white. One statement pendant in living or dining — linen, rattan, or smoked glass. Cove light acceptable.",
+    furniture:"Boucle or textured upholstery on sofa and chairs. Walnut table and shelving. Leather accent chair.",
+    textiles:"Boucle cushions, linen throw, wool rug — all in warm neutral tones.",decorDensity:"Moderate",
+    allowedDecor:["Architectural plant","Travertine or marble object","Leather-bound books","Art in warm toned frame","Ceramic vessel in stone or clay colour"],
+    rooms:{living:"Boucle sofa, leather lounge chair, walnut coffee table. Warm rug. Pendant or floor lamp.",kitchen:"Walnut cabinetry, stone countertop, integrated appliances. One open shelf section.",bedroom:"Walnut platform bed, upholstered headboard in boucle or linen. Warm lighting.",bathroom:"Travertine or warm stone tile. Brushed bronze fixtures. Timber vanity surface.",utility:"Neutral."},
+    avoid:["Cool grey","Chrome or silver","Glossy white","Industrial materials","Abstract geometric patterns"],
+    cutaway:"Warm timber surfaces dominate horizontal planes. Pendant in dining/living visible. Warm plaster walls create cohesion."
+  },
+  tw_warm:{
+    name:"Taiwan",variant:"Taiwan Warm Modern",mood:["curated","quiet","warm","textural","urban"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#E0D8CE",label:"Warm taupe",note:"Walls, ceiling, large surfaces"},
+      {role:"Secondary (30%)",hex:"#6B5744",label:"Mid warm brown",note:"Timber joinery, flooring"},
+      {role:"Accent (10%)",hex:"#C9A96E",label:"Antique brass",note:"Hardware, lighting details, thin accents only"}
+    ],
+    primaryMat:["Warm taupe smooth plaster","Medium-tone timber veneer cabinetry — flat doors","Honed stone or large-format matte tile"],
+    secondaryMat:["Warm grey micro-cement or plaster effect walls","Natural linen or cotton textiles","Brushed brass or bronze hardware"],accentMat:["Antique brass in hardware and light fittings only"],
+    formLang:["Clean rectangular planes","Flush joinery doors","No decorative relief","Linear LED integration","Slim flat profiles"],
+    walls:"Warm taupe matte plaster. One wall in a darker taupe or textured micro-cement effect. Panels allowed if flat and flush.",
+    floors:"Warm brown timber — medium tone, matte finish. Stone-look tile in wet areas.",
+    ceiling:"Flat. LED strip concealed in ceiling cavity giving indirect warm glow. Simple spotlight rail acceptable.",
+    furniture:"Flat-door built-ins, timber veneer. Upholstered seating in linen or boucle. No ornamental legs.",
+    textiles:"Linen curtains full height. Simple flat rug. Cushions in tonal range.",decorDensity:"Moderate",
+    allowedDecor:["Tall architectural plant","Ceramic vessels in earthy tones","Thin-frame art or photography","One object tray per surface"],
+    rooms:{living:"Mid-profile sofa, single coffee table, floor lamp. Curtain wall. Rug.",kitchen:"Flat-door cabinetry in timber veneer. Stone countertop. Integrated appliances.",bedroom:"Low platform bed, built-in wardrobe to ceiling. Warm indirect lighting.",bathroom:"Large stone-look tile. Wall-hung vanity, brass fixtures.",utility:"Neutral."},
+    avoid:["Exposed brick","Industrial elements","Busy patterns","Ornamental mouldings","High-gloss surfaces"],
+    cutaway:"Indirect ceiling cove implied by warm glow at perimeter. Timber-toned horizontal surfaces dominate."
+  },
+  tw_dark:{
+    name:"Taiwan",variant:"Dark Taiwanese Minimalism",mood:["bold","dramatic","dark","architectural","refined"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#3A3530",label:"Deep warm charcoal",note:"Walls, ceiling, large surfaces"},
+      {role:"Secondary (30%)",hex:"#5A4A3A",label:"Dark walnut brown",note:"Timber joinery, flooring, cabinetry"},
+      {role:"Accent (10%)",hex:"#C4945A",label:"Warm bronze gold",note:"Hardware, lighting, very limited surface details"}
+    ],
+    primaryMat:["Warm dark matte plaster or dark micro-cement","Dark walnut veneer cabinetry","Dark grey large-format porcelain"],
+    secondaryMat:["Dark leather upholstery","Black or dark bronze metal","Stone in dark grey or green-grey tones"],accentMat:["Warm bronze or antique gold hardware and light fittings"],
+    formLang:["Flat planes — all dark","Strong horizontal emphasis","No decorative relief","Concealed integrated lighting","Minimal reveals"],
+    walls:"Dark charcoal matte plaster throughout. No mouldings. Accent wall in dark walnut panel — flush, full height.",
+    floors:"Dark walnut timber or dark grey large-format stone tile. Continuous.",
+    ceiling:"Dark — same dark matte as walls. Concealed LED cove at perimeter. Recessed spotlight in matte black fitting.",
+    furniture:"Dark leather or dark boucle seating. Dark walnut built-ins. Minimal surface area visible.",
+    textiles:"Charcoal or dark earth cushions. Dark wool rug. Full blackout curtains in charcoal.",decorDensity:"Minimal",
+    allowedDecor:["One large-leafed dark plant","One stone or dark ceramic vessel","No framed art — let architecture speak"],
+    rooms:{living:"Dark leather sofa, walnut table, concealed lighting. Rug in charcoal. One plant.",kitchen:"Full dark cabinetry, dark stone countertop. No open shelf. Concealed lighting under upper cabinets.",bedroom:"Dark platform bed, upholstered in dark leather or boucle. Blackout curtains. Concealed LED at headboard.",bathroom:"Dark large-format tile walls and floor. Wall-hung dark vanity, bronze fixtures.",utility:"Dark, bare."},
+    avoid:["Light or bright walls","Warm cream or beige dominant field","Ornamental mouldings","Shiny chrome","Patterned surfaces","Pale wood"],
+    cutaway:"Dark dominant field throughout. Bronze accent points visible in hardware and light fittings. Concealed cove lighting implied at ceiling edge."
+  },
+  indo_contemporary:{
+    name:"Indochine",variant:"Contemporary Indochine",mood:["warm","layered","cultural","sophisticated","tropical"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#F2EBD8",label:"Warm ivory / French cream",note:"Walls, ceiling, main plaster surfaces"},
+      {role:"Secondary (30%)",hex:"#7A5C3A",label:"Deep warm teak brown",note:"Timber joinery, floors, furniture frames"},
+      {role:"Accent (10%)",hex:"#6B5B2E",label:"Antique olive bronze",note:"Brass hardware, a single textile tone, screen detail"}
+    ],
+    primaryMat:["Warm cream matte plaster","Teak or dark-stained timber flooring — oiled","Encaustic cement tile limited to one zone (entry or bathroom)"],
+    secondaryMat:["Rattan or woven bamboo panels — restrained use","Terracotta tile in bathroom","Linen or cotton textiles"],accentMat:["Aged brass or antique bronze hardware"],
+    formLang:["Slim turned timber legs","Rectangular frames with timber inlay","Low to mid-height furniture","Gentle arched openings on joinery only — not structural"],
+    walls:"Warm cream matte plaster. One accent wall in timber screen or flat encaustic panel — restrained, not full coverage.",
+    floors:"Teak-tone timber or encaustic tile in common zones. Terracotta in bathroom.",
+    ceiling:"Flat cream. Simple rattan or bamboo pendant. Ceiling fan in dark tone optional. No exposed structure.",
+    furniture:"Timber-framed upholstered pieces in linen. Low rattan accent chair. No heavy heavy furniture — keep it apartment-scale.",
+    textiles:"Linen curtains, cotton cushions in warm earth tones. One woven rug.",decorDensity:"Moderate",
+    allowedDecor:["Tall tropical plant (1 per room)","Aged ceramic vase","One woven basket","Simple framed print in warm tones","Rattan tray"],
+    rooms:{living:"Timber-framed sofa in linen, rattan accent chair, low teak coffee table. Pendant lamp. Woven rug.",kitchen:"Cream or white cabinetry with brass handles. Encaustic tile backsplash (one wall). Stone countertop.",bedroom:"Timber platform bed with slim upholstered headboard. Linen bedding. Single rattan pendant.",bathroom:"Terracotta tile + cream plaster. Aged brass fixtures. Simple teak shelf.",utility:"Neutral."},
+    avoid:["Excessive heavy furniture — apartment context requires restraint","Chinese decorative motifs","Heavy ornamental carvings","Chrome or silver hardware","Bright saturated colours"],
+    cutaway:"Warm ivory walls create the dominant field. Timber tones on horizontal surfaces. One pendant visible in living zone."
+  },
+  indo_luxury:{
+    name:"Indochine",variant:"Luxury Indochine",mood:["opulent","warm","colonial","grand","layered"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#E8DFC8",label:"Rich warm ivory",note:"Walls, ceiling, grand plaster surfaces"},
+      {role:"Secondary (30%)",hex:"#5C3D20",label:"Deep aged teak",note:"Heavy timber, flooring, dominant furniture"},
+      {role:"Accent (10%)",hex:"#8B6914",label:"Aged gold",note:"Brass hardware, inlay, a single textile, lamp detail"}
+    ],
+    primaryMat:["Rich warm plaster — slightly textured","Dark aged teak flooring — oiled, deep grain","Marble or honed dark stone in select surfaces"],
+    secondaryMat:["Rattan and bamboo screens — large feature scale","Dark teak furniture frames","Aged brass hardware"],accentMat:["Gold-toned textile in single drape or cushion"],
+    formLang:["Heavy timber frames","Generous proportions","Low silhouette furniture on dark legs","Rattan screen as architectural element"],
+    walls:"Rich warm ivory plaster. Feature wall in large rattan screen or dark teak panel. No cheap panelling.",
+    floors:"Dark teak or aged wood tile — oiled. Stone in bathroom and entry.",
+    ceiling:"Cream with dark teak perimeter beam detail — restrained. Rattan pendant or dark-tone fan. No modern cove.",
+    furniture:"Heavy teak-framed upholstered pieces. Dark wood dining table — large, solid. Accent screen between zones.",
+    textiles:"Silk or silk-look cushions in warm gold / deep jade — limited to 1 colour. Heavyweight linen curtains.",decorDensity:"Layered",
+    allowedDecor:["2 large tropical plants","Aged ceramic or terracotta vessels","One large mirror with teak frame","Brass object (tray, vase, candle holder)","Encaustic tile as display piece"],
+    rooms:{living:"Large teak-framed sofa, rattan lounge chairs, dark wood console. Grand pendant. Antique rug.",kitchen:"Cream cabinetry, dark stone countertop, brass hardware. Encaustic tile in one zone.",bedroom:"Dark teak four-poster or platform bed, high upholstered headboard. Linen and silk bedding. Dark curtains.",bathroom:"Dark stone + terracotta. Freestanding bath if space allows. Aged brass fixtures.",utility:"Keep neutral."},
+    avoid:["Modern minimalist surfaces","Cool grey tones","Chrome","Flat-door contemporary cabinetry","Abstract art","Industrial elements"],
+    cutaway:"Deep dark timber on floor and furniture frames creates strong contrast with warm ivory walls. Rattan screen visible as key feature."
+  },
+  ind_raw:{
+    name:"Industrial",variant:"Raw Industrial — Refined",mood:["raw","honest","robust","curated","urban-loft"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#4A4744",label:"Warm dark grey concrete",note:"Walls, ceiling — raw plaster or bare concrete look"},
+      {role:"Secondary (30%)",hex:"#5C4A35",label:"Aged dark timber",note:"Flooring, structural timber elements"},
+      {role:"Accent (10%)",hex:"#B87333",label:"Patinated copper / warm bronze",note:"Metal details, lamp fittings — used sparingly"}
+    ],
+    primaryMat:["Raw concrete or dark matte micro-cement walls","Aged timber flooring — knots and grain visible","Dark grey large-format concrete-look tile"],
+    secondaryMat:["Matte black powder-coated steel frames","Dark reclaimed or engineered timber","Exposed brick — limited to one feature wall"],accentMat:["Patinated copper or dark bronze metal fittings"],
+    formLang:["Large blocky volumes","Exposed structural joints","Flat heavy surfaces","Visible bolt or rivet detail on metal — refined, not decorative","No soft curves"],
+    walls:"Dark grey concrete plaster — texture intentional but controlled. One feature wall in exposed brick — clean and curated, not deteriorated. No ornament.",
+    floors:"Aged timber — dark, wide planks, knot detail. Polished concrete acceptable in open zones.",
+    ceiling:"Flat dark concrete — or expose one structural beam intentionally. Edison bulb pendant or industrial spotlight. No ornate fixture.",
+    furniture:"Dark leather sofa — clean Chesterfield or boxy industrial form. Steel and timber table. Tube-frame steel chairs.",
+    textiles:"One dark wool rug. Leather or cotton cushions — no pattern. Curtains in heavy canvas or linen — dark charcoal.",decorDensity:"Moderate",
+    allowedDecor:["Industrial pendant lamp as statement","One large plant","Edison bulb exposed","One large-scale dark-framed photography","Steel tray or metal vessel"],
+    rooms:{living:"Large dark leather sofa, steel-frame coffee table, exposed Edison pendant. Concrete or timber floor. Dark rug.",kitchen:"Matte black cabinetry, dark stone countertop, exposed steel shelf unit — one only. Edison undercabinet strip.",bedroom:"Steel or dark timber bed frame. Dark linen bedding. Industrial wall sconce.",bathroom:"Dark concrete tile. Wall-hung basin in dark material. Black plumbing fixtures.",utility:"Raw."},
+    avoid:["Bright or warm cream tones","Ornamental mouldings","Rustic farmhouse decorations","Glossy surfaces","Colourful decor","Over-accessorised surfaces"],
+    cutaway:"Exposed ceiling beam visible if present. Edison pendant clearly visible. Concrete and dark timber create dominant field. Metal accents pinpoint details."
+  },
+  lux_modern:{
+    name:"Modern Luxury",variant:"Dark Modern Luxury",mood:["dramatic","opulent","dark","powerful","exclusive"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#2A2826",label:"Deep charcoal / near black",note:"Walls, large surfaces, ceiling"},
+      {role:"Secondary (30%)",hex:"#4A3728",label:"Dark walnut / espresso brown",note:"Timber joinery, flooring"},
+      {role:"Accent (10%)",hex:"#C9A84C",label:"Brushed gold",note:"Hardware, lighting details, mirror frames — not on wall areas"}
+    ],
+    primaryMat:["Dark micro-cement or deep charcoal matte plaster","Dark walnut or wenge timber","Nero Marquina or dark grey large-format marble or marble-look stone"],
+    secondaryMat:["Deep charcoal leather","Dark smoked glass","Matte black powder-coated metal"],accentMat:["Brushed gold hardware and light fittings"],
+    formLang:["Monolithic horizontal surfaces","Flush everything — no visible joints","Ultra-slim profiles on metal","Heavy proportion on upholstery — low silhouette","Architectural geometry only"],
+    walls:"Deep charcoal matte plaster throughout. Feature wall in dark marble or stone panel — book-matched vein if possible. No ornament.",
+    floors:"Dark walnut timber or large-format dark stone. Continuous.",
+    ceiling:"Dark — matching walls. Concealed LED cove at perimeter giving warm gold glow. Recessed spotlight in matte black. Statement pendant in dining only — smoked glass or brushed gold.",
+    furniture:"Dark leather sofa — low profile, generous scale. Dark walnut built-ins. Dark stone coffee table. Bespoke built-in bar unit.",
+    textiles:"Charcoal or black flat-weave rug. Dark velvet or leather cushions. Blackout drapes in deep charcoal.",decorDensity:"Minimal",
+    allowedDecor:["One large-leafed architectural plant","Dark ceramic or stone vessel","Smoked glass decor item","Framed large-scale abstract art in dark frame"],
+    rooms:{living:"Low dark leather sofa, dark stone table, concealed cove lighting. Dark rug. One plant.",kitchen:"Full dark cabinetry, dark stone countertop, integrated high-end appliances. Gold hardware.",bedroom:"Low platform bed, dark upholstered headboard — full width. Blackout curtains. Bedside LED strip.",bathroom:"Dark large-format stone tile. Freestanding or wall-hung dark vanity. Brushed gold fixtures.",utility:"Dark, bare."},
+    avoid:["Light or cream walls","Warm or beige dominant tones","Ornamental mouldings","Classic luxury elements","Chrome","Pattern"],
+    cutaway:"Dark field throughout. Gold accents visible in hardware and ceiling cove glow. Low pendant in dining zone visible."
+  },
+  lux_modern_light:{
+    name:"Modern Luxury",variant:"Light Modern Luxury",mood:["luminous","calm","elevated","refined","airy luxury"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#F0EBE0",label:"Warm white stone",note:"Walls, ceiling, large cabinetry"},
+      {role:"Secondary (30%)",hex:"#C4B49A",label:"Pale travertine",note:"Stone surfaces, flooring, joinery"},
+      {role:"Accent (10%)",hex:"#B5965A",label:"Warm brushed gold",note:"Hardware, lighting, mirror frames only"}
+    ],
+    primaryMat:["Warm white honed marble or high-end marble-look porcelain","Travertine or cream-toned large-format stone","Matte warm white lacquer cabinetry"],
+    secondaryMat:["Warm cream boucle or silk upholstery","Pale warm oak timber accents","Brushed gold hardware"],accentMat:["Brushed gold in hardware and fittings only"],
+    formLang:["Monolithic flat surfaces","Seamless joins","Slim profiles","Low to mid-height furniture","Generous spacing between elements"],
+    walls:"Warm white honed stone panel or warm white matte plaster. Feature wall in book-matched marble — restrained.",
+    floors:"Large-format travertine or warm-tone stone tile, honed. Warmed white oak in bedroom.",
+    ceiling:"Flat off-white. Concealed LED cove giving warm indirect glow. Simple pendant in dining — smoked glass or fine brass.",
+    furniture:"Bespoke upholstered pieces in cream boucle or silk. Travertine or marble coffee table. Pale timber accent.",
+    textiles:"Cream or ivory cushions. Fine-weave rug in warm neutral. Sheer linen curtains full height.",decorDensity:"Minimal",
+    allowedDecor:["One architectural plant","One marble or travertine object","Thin-framed art — one per room","One brushed gold tray"],
+    rooms:{living:"Cream boucle sofa, travertine coffee table, floor lamp or pendant. Sheer curtains. Fine rug.",kitchen:"White stone countertop, warm white lacquer cabinetry, integrated appliances. Gold hardware.",bedroom:"Platform bed, upholstered in cream silk or boucle. Concealed LED at headboard. Sheer drapes.",bathroom:"Warm stone tile — floor and walls. Wall-hung marble vanity. Brushed gold fixtures.",utility:"Keep neutral."},
+    avoid:["Dark dominant tones","Industrial elements","Heavy ornament","Cold grey or white","Chrome","Pattern on large surfaces"],
+    cutaway:"Warm stone surfaces throughout create luminous field. Pendant in dining visible. Cove glow implied at ceiling perimeter."
+  },
+  lux_classic:{
+    name:"Classic Luxury",variant:"Neo-Palatial Classic — Apartment Scale",mood:["grand","symmetrical","regal","opulent","timeless"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#F5EFE0",label:"Royal cream / warm ivory",note:"Walls, ceiling, major plaster surfaces"},
+      {role:"Secondary (30%)",hex:"#C4A882",label:"Warm champagne stone",note:"Stone floors, large marble surfaces"},
+      {role:"Accent (10%)",hex:"#B8972A",label:"Aged gold leaf",note:"Moulding highlights, lighting, mirror frames — not dominant areas"}
+    ],
+    primaryMat:["Warm ivory smooth plaster — high quality","Carrara or cream marble — honed or slightly polished","Fine wood — herringbone parquet in warm oak or light walnut"],
+    secondaryMat:["Upholstery in velvet — cream, champagne, soft rose","Aged gold brass hardware","Silk or silk-look drapery"],accentMat:["Gold leaf or polished brass on moulding highlights — restrained"],
+    formLang:["Perfect symmetry in furniture arrangement","Curved legs on chairs and occasional tables","Moulded profiles — restrained and slim","No heavy Baroque excess — apartment-appropriate scale","Classical proportions in joinery panel divisions"],
+    walls:"Warm ivory plaster, divided into symmetrical panels by slim restrained mouldings — not heavy Baroque relief. No gold plating on large wall areas.",
+    floors:"Herringbone oak or marble with subtle vein. Corridor in marble, living in herringbone.",
+    ceiling:"Slim moulded cornice at perimeter. Central medallion — modest scale. Crystal or brass pendant — appropriately sized for apartment, not ballroom.",
+    furniture:"Upholstered sofa and chairs — velvet, curved arms, slim gilded legs. Dining chairs in matched velvet. Console table with slim inlaid legs.",
+    textiles:"Silk or velvet cushions in cream/champagne/soft rose. Richly draped silk curtains. Antique or Persian-style rug.",decorDensity:"Highly decorative",
+    allowedDecor:["Gilded mirror","Brass or bronze sculptural objects","Crystal decanter or vase","Flowers in classical vase","Candelabra or table lamp with crystal shade"],
+    rooms:{living:"Symmetrical sofa arrangement around marble coffee table. Gilded mirror above console. Crystal pendant.",kitchen:"Painted cabinetry in cream — raised panel door. Marble countertop. Brass hardware.",bedroom:"Upholstered bed — button-tufted headboard in velvet. Bedside tables with lamp. Symmetrical arrangement.",bathroom:"Marble throughout. Freestanding bath if space allows. Gilded or brass fixtures. Large framed mirror.",utility:"Keep neutral."},
+    avoid:["Overly heavy Baroque ornament","Industrial or minimal elements","Dark walls","Casual or rustic furniture","Chrome or modern hardware"],
+    cutaway:"Moulded cornice visible at wall-ceiling junction. Central pendant clearly visible. Symmetrical furniture arrangement readable from above."
+  },
+  lux_ind:{
+    name:"Industrial Luxury",variant:"Industrial Luxury",mood:["dramatic","raw-refined","contrast","premium-loft","distinctive"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#3D3A37",label:"Dark warm charcoal concrete",note:"Walls, ceiling, concrete surfaces"},
+      {role:"Secondary (30%)",hex:"#4E3D2C",label:"Dark warm walnut",note:"Timber surfaces, joinery"},
+      {role:"Accent (10%)",hex:"#C9A84C",label:"Brushed gold / antique brass",note:"Metal details — deliberate contrast against dark base"}
+    ],
+    primaryMat:["Polished dark concrete or dark micro-cement","Dark walnut timber — premium grade","Dark grey large-format stone"],
+    secondaryMat:["Black or dark bronze structural steel","High-quality dark leather","Polished concrete floor — mirror-like"],accentMat:["Antique brass or brushed gold on lighting and key hardware"],
+    formLang:["Large industrial forms elevated by premium materials","Exposed structural connections — refined, not rough","Strong horizontal massing","Slim gold or brass lines against dark field"],
+    walls:"Dark concrete texture — controlled and premium, not rough. One feature wall in dark walnut panel or dark stone slab.",
+    floors:"Polished dark concrete — high-gloss reflective surface. Dark wool rug as zone definer.",
+    ceiling:"Exposed dark structural beam — intentional and clean. Industrial pendant in dark metal with gold inner or smoked glass. No ornament.",
+    furniture:"Dark leather Chesterfield or low-profile lounge. Raw walnut dining table — large solid slab. Steel and walnut shelving.",
+    textiles:"Dark wool or leather rug. Dark charcoal or black cushions. Heavy canvas or blackout drapes.",decorDensity:"Moderate",
+    allowedDecor:["Large-scale industrial pendant as key statement","One large plant","Dark stone or metal sculptural vessel","Large-format dark-framed art or photography"],
+    rooms:{living:"Dark leather sofa, walnut coffee table on polished concrete. Statement pendant. Dark rug. One plant.",kitchen:"Matte black cabinetry + dark stone countertop. Exposed steel shelf one unit. Industrial rangehood.",bedroom:"Steel or dark walnut bed frame. Dark linen bedding. Industrial wall sconce. Polished concrete floor.",bathroom:"Dark concrete tile + dark stone. Wall-hung dark vanity. Black plumbing + gold accent fixture.",utility:"Dark, raw."},
+    avoid:["Warm cream or light walls as dominant","Classic luxury ornament","Shiny chrome","Pastel or soft tones","Decorative patterns"],
+    cutaway:"Dark dominant field. Industrial pendant clearly visible. Gold accents as precise counterpoint at hardware level. Polished concrete floor reflects light."
+  },
+  lux_min:{
+    name:"Minimal Luxury",variant:"Minimal Luxury",mood:["absolute","elevated","silent","material-led","exclusive"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#F0EDE8",label:"Warm off-white stone",note:"Walls, ceiling — let the surface speak"},
+      {role:"Secondary (30%)",hex:"#2C2520",label:"Deep charcoal / near-black",note:"Flooring, built-ins, key joinery"},
+      {role:"Accent (10%)",hex:"#E8E0D0",label:"Natural stone vein",note:"Single marble or onyx panel — the only visual relief"}
+    ],
+    primaryMat:["Premium honed marble or quartzite — unique vein is the decoration","Matte dark lacquer or charcoal stone-faced cabinetry","Warm off-white fine plaster — flawless"],
+    secondaryMat:["Walnut in dark or platinum finish","Suede or mohair upholstery — single colour","Matte black ultra-slim hardware"],accentMat:["Unique vein natural stone panel — one per apartment"],
+    formLang:["Zero visible joins","No hardware — magnetic touch latches","Ultra-slim profiles","Every element bespoke — no stock furniture","Empty space is a material"],
+    walls:"Flawless warm off-white plaster — zero imperfection. One wall is a single slab of book-matched marble or onyx — this is the only decoration.",
+    floors:"Dark honed stone or dark walnut in large format. No pattern.",
+    ceiling:"Absolutely flat. Zero fixture visible. Concealed full-perimeter LED cove — warm tone. Magnetic recessed spotlight — hairline opening only.",
+    furniture:"Bespoke only — no recognisable stock pieces. Single large sofa in mohair or suede. One stone coffee table — solid block. No side tables.",
+    textiles:"Single flat-weave rug in warm off-white. Curtains in full-width heavyweight silk — floor to ceiling, wall-to-wall. No cushion pattern.",decorDensity:"Minimal",
+    allowedDecor:["The marble panel is the decor — nothing else competes","One slim-stem plant in a stone vessel","No art","No objects on surfaces"],
+    rooms:{living:"Single sofa, one coffee table, one plant. Marble feature wall. Cove light only.",kitchen:"Full-height flush dark cabinetry. Single stone countertop — one continuous slab. No visible hardware.",bedroom:"Platform bed — bespoke, ultra-slim. Full-width blackout drape. No visible bedside.",bathroom:"Single-material bathroom — entire floor and wall in one stone. Fully recessed storage. Drop-in or freestanding bath.",utility:"Invisible."},
+    avoid:["Any visible decorative element beyond the stone feature","Multiple decor items","Pattern on any surface","Visible hardware","Standard stock furniture","Bright accent colours","Heavy ornament"],
+    cutaway:"Marble feature wall immediately legible from above. Dark floor contrasts with off-white walls. Near-empty spaces read as intentional. Cove light glow implied at ceiling perimeter."
+  },
+  wabi:{
+    name:"Wabi Sabi",variant:"Wabi Sabi",mood:["imperfect","organic","earthy","meditative","unhurried"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#C9B99A",label:"Warm earth clay",note:"Walls, plaster — uneven texture is correct"},
+      {role:"Secondary (30%)",hex:"#8C7A62",label:"Warm brown grey",note:"Flooring, timber, natural furniture"},
+      {role:"Accent (10%)",hex:"#8B6B3E",label:"Aged patina ochre",note:"Ceramic, rusted metal detail, aged brass — never bright"}
+    ],
+    primaryMat:["Imperfect clay plaster or textured lime wash — variation in surface is intentional","Rough-grain natural timber flooring — oiled, showing age marks","Unglazed ceramic tile in bathroom — warm terracotta or cream"],
+    secondaryMat:["Aged timber furniture — knots and cracks retained","Natural linen — undyed, washed","Woven natural fibre rug — jute or rush"],accentMat:["Patinated bronze or aged iron — no shine","Hand-thrown ceramic vessels — crackle glaze or natural clay"],
+    formLang:["Organic asymmetric forms","Rounded irregular edges","Low-to-ground furniture","Visible material imperfection is intentional","Nothing perfectly straight"],
+    walls:"Clay plaster — warm earth tone, visibly textured and subtly uneven. This imperfection is the aesthetic. Avoid bright, saturated, glossy or artificial colours.",
+    floors:"Natural rough-grain timber — wide plank, oiled. Aged marks intentional. Jute or rush mat in living zone.",
+    ceiling:"Flat clay plaster or natural timber beam — one beam maximum. Simple pendant in raw ceramic or woven material. No LED strip.",
+    furniture:"Aged timber — low-profile, rounded edges, imperfect grain visible. Linen upholstery — undyed, slightly wrinkled. Low tea table.",
+    textiles:"Linen cushions — undyed. Jute or rush flat mat. Linen curtains — unlined, letting warm light filter.",decorDensity:"Moderate",
+    allowedDecor:["2–3 hand-thrown ceramic vessels","One dried botanical — single stem","Aged bronze or iron small object","One woven basket","No fresh tropical plants — prefer dried, muted, or moss"],
+    rooms:{living:"Low timber sofa frame with linen cushions, low ceramic table, rush mat. Single clay pendant or floor lamp.",kitchen:"Natural plaster or clay-painted cabinet fronts. Stone countertop — rough edge. Open ceramic shelf.",bedroom:"Low platform bed — natural timber. Linen bedding — undyed. Window with unlined linen curtain.",bathroom:"Unglazed terracotta or cream tile. Clay-vessel basin. Aged bronze tap. Wooden board as shelf.",utility:"Neutral, natural."},
+    avoid:["Bright or saturated colours","Glossy surfaces","Chrome or silver","Geometric abstract patterns","Modern minimal aesthetic","Symmetrical precise arrangement","Synthetic materials"],
+    cutaway:"Textured clay plaster walls provide warm earthy field. Low furniture keeps sightlines clear. Aged timber grain visible on floors. Organic asymmetry throughout."
+  },
+  japandi:{
+    name:"Japandi",variant:"Japandi",mood:["still","minimal","warm-neutral","crafted","balanced"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#F2EDE4",label:"Warm ivory / washi white",note:"Walls, ceiling — pure and still"},
+      {role:"Secondary (30%)",hex:"#A08968",label:"Natural warm oak",note:"Flooring, timber joinery, furniture frames"},
+      {role:"Accent (10%)",hex:"#2A2A26",label:"Matte charcoal / sumi ink",note:"Hardware, single detail per room — used with restraint"}
+    ],
+    primaryMat:["Warm ivory smooth matte plaster","Light natural oak flooring — oiled, fine grain, minimal knots","Matte white or light grey ceramic tile in wet areas"],
+    secondaryMat:["Natural linen or undyed cotton textiles","Woven rush or coir mat","Unglazed hand-thrown ceramic"],accentMat:["Matte black or charcoal metal hardware — thin profile only"],
+    formLang:["Low furniture — seating close to ground creates horizontal calm","Slim legs — minimal material use","Rounded corners on tables and joinery","No decoration applied to surfaces","Natural material imperfection acceptable","Quiet restraint over decoration"],
+    walls:"Warm ivory smooth matte plaster. Possible vertical slim oak slat panel on one wall — evoking Shoji without copying it literally. No mouldings.",
+    floors:"Light natural oak — fine grain, oiled matte. Coir or rush flat mat as rug. Matching stone in bathroom.",
+    ceiling:"Flat ivory or off-white. Slim oak trim detail at ceiling-wall junction optional. One pendant — washi paper (Akari-style), ceramic, or simple linen drum. No heavy fixture.",
+    furniture:"Low-profile sofa — natural linen or undyed cotton. Slim-leg oak coffee table with rounded corners. Low wooden bed or futon-adjacent platform. Built-in joinery in oak — clean, no applied handles.",
+    textiles:"Undyed linen cushions. Coir or jute flat rug. Linen sheer curtains. One simple throw — warm grey or ivory.",decorDensity:"Minimal",
+    allowedDecor:["One hand-thrown ceramic vessel","One dried botanical stem — single, in simple vessel","One woven basket — stored or displayed low","Washi paper pendant light as visual anchor","No clusters, no stacking"],
+    rooms:{living:"Low linen sofa, slim oak coffee table, Akari pendant or simple floor lamp. Rush mat. One ceramic. One plant.",kitchen:"Oak flat-door cabinetry. Stone or honed ceramic countertop. Simple bar pull in matte black. No open shelving excess.",bedroom:"Low platform bed or low-leg frame. Linen bedding — undyed. Single pendant or wall sconce. Oak wardrobe built-in.",bathroom:"Pale stone or cream ceramic tile — large format. Wall-hung simple vanity in oak. Matte black tapware.",utility:"Keep bare."},
+    avoid:["Cherry blossom or overtly Japanese cultural motifs","Multiple Akari or Shoji elements — restraint is key","Scandinavian folk patterns","Heavy furniture","Ornamental mouldings","Bright colour accents","Synthetic materials","Cluttered surfaces"],
+    cutaway:"Low furniture maintains open sightlines. Pale oak flooring creates continuous warm horizontal field. One pendant light clearly visible. Ivory walls as quiet backdrop."
+  },
+  neocl_restrained:{
+    name:"Neo-Classical",variant:"Restrained Neo-Classical",mood:["refined","symmetrical","elegant","composed","timeless"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#F3EEE6",label:"Warm ivory cream",note:"Walls, ceiling, main plaster surfaces"},
+      {role:"Secondary (30%)",hex:"#D4C4A8",label:"Warm pale stone",note:"Flooring, stone surfaces, joinery"},
+      {role:"Accent (10%)",hex:"#8B6914",label:"Antique gold / dark brass",note:"Moulding highlights, hardware, lamp frames — restrained"}
+    ],
+    primaryMat:["Warm ivory smooth plaster","Honed Carrara or cream marble — classic vein","Herringbone or straight-lay oak or walnut parquet"],
+    secondaryMat:["Velvet or silk upholstery — cream, champagne, or deep muted tone","Antique brass or dark bronze hardware","Fine marble in bathroom"],accentMat:["Antique gold on moulding highlights only — not dominant"],
+    formLang:["Strict symmetry in furniture placement","Slim restrained wall mouldings — panels only, not heavy relief","Curved but controlled chair and table legs","Classical proportion in all joinery panel divisions","No heavy Baroque excess"],
+    walls:"Warm ivory plaster. Symmetrical slim moulding panels — flat profile, not raised relief. Highlight in antique gold only at panel edge. No bold colour.",
+    floors:"Herringbone oak parquet or honed marble with classical proportion. Antique or Persian rug acceptable.",
+    ceiling:"Slim restrained cornice. Simple central medallion — modest scale. Crystal or brass pendant sized for apartment ceiling height.",
+    furniture:"Upholstered sofa — velvet or silk, curved arm, slim gilded leg. Dining chairs matched. Console with tapered inlaid legs.",
+    textiles:"Silk or velvet cushions — cream, champagne, soft dusty rose. Draped silk curtains full height. Classic woven rug.",decorDensity:"Highly decorative",
+    allowedDecor:["Gilded or antique-frame mirror","Brass or bronze sculptural object","Classic ceramic vase with flowers","Table lamp with fabric shade","Pair of matching decor objects on console"],
+    rooms:{living:"Symmetrical sofa-and-chair arrangement. Marble coffee table. Gilded mirror above console. Classical pendant.",kitchen:"Painted cream raised-panel cabinetry. Marble countertop. Brass hardware.",bedroom:"Button-tufted or channel-tufted headboard — velvet. Symmetrical bedside arrangement. Draped curtains.",bathroom:"Marble floor and walls. Antique-style fixtures in brass. Large ornate-frame mirror.",utility:"Neutral."},
+    avoid:["Heavy Baroque ornament beyond apartment scale","Industrial or raw materials","Dark walls","Modern minimal furniture","Chrome hardware","Abstract or contemporary art"],
+    cutaway:"Slim moulding panels visible on walls from above. Cornice at wall-ceiling junction visible. Classical pendant clearly readable. Symmetrical furniture arrangement legible from plan view."
+  },
+  rustic:{
+    name:"Rustic",variant:"Refined Rustic",mood:["natural","grounded","earthy","honest","premium-craft"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#C8B99A",label:"Warm earth / pale stone",note:"Walls — plaster with texture, honest surface"},
+      {role:"Secondary (30%)",hex:"#6E5540",label:"Aged warm timber",note:"Floors, beams, structural timber"},
+      {role:"Accent (10%)",hex:"#2C2C28",label:"Matte iron black",note:"Hardware, thin metal details only"}
+    ],
+    primaryMat:["Rough-textured warm plaster — intentionally uneven","Natural timber flooring — wide plank, oiled, knots visible","Dry-stack or chiselled stone accent wall — one only, restrained"],
+    secondaryMat:["Natural linen or cotton","Woven jute or sisal rug","Unglazed ceramic"],accentMat:["Matte iron hardware — hand-forged aesthetic"],
+    formLang:["Heavy timber frames — honest joinery","Generous scale furniture — solid, not hollow","Visible grain and knot in all timber","No veneer","Stone has rough edge"],
+    walls:"Warm earth plaster — texture deliberate and controlled. One feature wall in dry-stack stone — clean and curated, not deteriorated. Use refined over raw.",
+    floors:"Wide-plank natural timber — dark oiled. Visible grain and knots. Jute or sisal rug in living.",
+    ceiling:"Timber beam — one or two primary beams only. Plaster between beams in warm earth tone. Simple pendant — ceramic or woven.",
+    furniture:"Solid timber dining table — live-edge or straight plank. Timber bench. Upholstered chairs in natural linen. Timber-frame sofa.",
+    textiles:"Linen or cotton cushions — warm earth tones. Jute rug. Linen curtains unlined.",decorDensity:"Moderate",
+    allowedDecor:["Ceramic vessel in earth tones","Wooden bowl or tray","Dried botanical arrangement","Simple lantern","One framed nature photograph"],
+    rooms:{living:"Timber-frame sofa in linen, live-edge coffee table. Stone feature wall if visible. Pendant lamp.",kitchen:"Natural timber cabinetry — solid not veneer. Stone countertop. Open shelf — one run, curated.",bedroom:"Solid timber bed frame — plank headboard. Natural linen bedding. Timber ceiling beam.",bathroom:"Rough ceramic or terracotta tile. Timber accessories. Stone basin if space allows.",utility:"Natural, bare."},
+    avoid:["Polished or glossy surfaces","Industrial metal dominant","Modern minimal aesthetic","Bright accent colours","Synthetic materials","Ornamental decorative mouldings"],
+    cutaway:"Timber beam visible as strong horizontal structural element. Wide plank flooring with grain readable. Stone feature wall provides natural texture contrast."
+  },
+  retro:{
+    name:"Retro",variant:"Mid-Century Retro",mood:["playful","optimistic","graphic","colourful","nostalgic"],
+    colours:[
+      {role:"Dominant (60%)",hex:"#F5EFD0",label:"Warm butter yellow",note:"Walls, ceiling — the signature warm field"},
+      {role:"Secondary (30%)",hex:"#D4714A",label:"Mid-Century coral orange",note:"Key furniture piece, one wall zone"},
+      {role:"Accent (10%)",hex:"#2E7D6E",label:"Teal / muted aqua",note:"Cushions, one chair, small ceramics — not large surfaces"}
+    ],
+    primaryMat:["Flat-painted plaster — warm butter or cream base","Terrazzo floor — warm-tone chips, not cold grey","Laminate or veneer cabinetry in warm tones"],
+    secondaryMat:["Wool or boucle upholstery — solid colours","Warm teak or walnut veneer on furniture","Geometric patterned tile — limited to one zone"],accentMat:["Anodised aluminium in warm bronze","Smoked or amber glass"],
+    formLang:["Tapered legs angled outward — the defining Mid-Century form","Kidney or boomerang table silhouettes","Ovoid or tulip chair forms","Graphic pattern as surface treatment (tile, rug, wallpaper)","No classical curves"],
+    walls:"Warm butter yellow matte plaster. One accent wall in geometric patterned wallpaper (Mid-Century abstract pattern) or a solid block of coral-orange — not both.",
+    floors:"Terrazzo in warm tones — chip colours echo accent palette. Alternatively, honey oak in herringbone or straight lay.",
+    ceiling:"Off-white flat. Atomic or geometric pendant in metal — anodised brass or matte coral. Sputnik style acceptable.",
+    furniture:"Sofa with tapered outward legs — upholstered in warm mustard or warm grey. Tulip or Eames-influenced lounge chair. Teak sideboard.",
+    textiles:"Geometric-pattern rug — bold but not busy. Cushions in solid retro palette. Curtains in warm plain linen.",decorDensity:"Layered",
+    allowedDecor:["Sputnik or atomic pendant as statement","Starburst clock or wall graphic","Paired retro ceramic lamps","Teak shelf with ceramics and books","Terracotta pot with architectural plant"],
+    rooms:{living:"Tapered-leg sofa in mustard, tulip chair in teal, terrazzo floor, Sputnik pendant. Bold rug.",kitchen:"Warm-toned laminate cabinetry, terrazzo countertop, geometric tile backsplash. Anodised aluminium hardware.",bedroom:"Low platform bed — teak frame. Retro-influenced table lamp. Geometric printed cushion. Warm curtains.",bathroom:"Terrazzo tile. Coloured sanitary ware in warm cream or blush. Round mirror in teak frame.",utility:"Warm neutral."},
+    avoid:["Cold modern grey","Industrial elements","Dark dramatic tones","Heavy luxury ornament","Abstract contemporary art","Rustic or raw materials"],
+    cutaway:"Warm butter field on walls immediately legible. Terrazzo floor pattern visible from above. Sputnik or atomic pendant clearly readable. Tapered furniture legs visible throughout."
+  }
 };
-const selColors = { wall: null, accent: null };
 
-document.querySelectorAll('.scard').forEach(c => {
-  c.addEventListener('click', () => {
-    document.querySelectorAll('.scard').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
-    selStyle = { prompt: c.dataset.prompt };
+let selectedStyleKey = "";
+
+/* ================================================================
+   BUILD INTERFACE INTERACTION
+   ================================================================ */
+const navContainer = document.getElementById('sidebar-nav');
+STYLE_GROUPS.forEach(g => {
+  const label = document.createElement('div');
+  label.className = 'group-label';
+  label.textContent = g.group;
+  navContainer.appendChild(label);
+  
+  g.styles.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'style-btn';
+    btn.dataset.key = s.key;
+    btn.innerHTML = `<span class="sbn">${STYLES[s.key].name}</span>${s.label}`;
+    btn.addEventListener('click', () => selectStyle(s.key));
+    navContainer.appendChild(btn);
   });
+  const div = document.createElement('div');
+  div.className = 'sdiv';
+  navContainer.appendChild(div);
 });
 
-document.querySelectorAll('.cswatch').forEach(sw => {
-  sw.addEventListener('click', () => {
-    const cat = sw.dataset.cat;
-    const isActive = sw.classList.contains('active');
-    document.querySelectorAll(`.cswatch[data-cat="${cat}"]`).forEach(x => x.classList.remove('active'));
-    if (isActive) { selColors[cat] = null; }
-    else { sw.classList.add('active'); selColors[cat] = { name: sw.dataset.name, hex: sw.dataset.hex }; }
-    updatePalette();
-  });
-});
-
-function updatePalette() {
-  const el = document.getElementById('palette-preview');
-  const chips = [];
-  if (selColors.wall) chips.push({ label: 'Tường: ' + selColors.wall.name, hex: selColors.wall.hex });
-  if (selColors.accent) chips.push({ label: 'Accent: ' + selColors.accent.name, hex: selColors.accent.hex });
-  el.innerHTML = chips.length
-    ? chips.map(c => `<span class="pal-chip"><span class="pal-dot" style="background:${c.hex}"></span>${c.label}</span>`).join('')
-    : '<span class="pal-none">Chưa chọn màu nào</span>';
+function selectStyle(key) {
+  selectedStyleKey = key;
+  document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-key="${key}"]`).classList.add('active');
+  
+  // Render Preview Panel
+  const S = STYLES[key];
+  const preview = document.getElementById('style-preview');
+  
+  preview.innerHTML = `
+    <div class="sp-header">
+      <div class="sp-name">${S.name} — <em>${S.variant}</em></div>
+    </div>
+    <div class="sp-mood">
+      ${S.mood.map(m => `<span class="sp-mood-tag">${m}</span>`).join('')}
+    </div>
+    <div class="sp-palette">
+      ${S.colours.map(c => `
+        <div class="sp-col-card">
+          <div class="sp-col-swatch" style="background:${c.hex}"></div>
+          <div class="sp-col-body">
+            <div class="sp-col-role">${c.role}</div>
+            <div class="sp-col-label">${c.label}</div>
+            <div class="sp-col-hex">${c.hex}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="sp-mats">
+      <strong>Primary Materials:</strong> ${S.primaryMat.join(', ')}<br>
+      <strong>Form Language:</strong> ${S.formLang.join(', ')}
+    </div>
+    <div class="sp-avoid">
+      <strong>Avoid:</strong> ${S.avoid.slice(0, 3).join(', ')}...
+    </div>
+  `;
 }
 
-function buildColorLine() {
-  const p = [];
-  if (selColors.wall) p.push(`dominant wall/space color: ${selColors.wall.name} (${selColors.wall.hex})`);
-  if (selColors.accent) p.push(`accent and furniture color: ${selColors.accent.name} (${selColors.accent.hex})`);
-  return p.length ? '\nColor palette: ' + p.join('; ') : '';
-}
-
-function getOptional() {
-  const map = {
-    c6: 'Do not add balconies, loggias, or terraces not visible in the floor plan.',
-    c7: 'Do not introduce decorative plants beyond those described.',
-    c8: 'Do not add wall art, sculptures, or decorative objects not described.',
-    c9: 'Do not vary wall colors or floor materials between rooms unless specified.'
-  };
-  return Object.keys(map).filter(k => document.getElementById(k).checked).map(k => map[k]);
-}
-
+/* ================================================================
+   PROMPT LOGIC GENERATION
+   ================================================================ */
 function generatePrompt() {
+  if (!selectedStyleKey) {
+    alert("Vui lòng chọn một phong cách nội thất ở danh mục bên trái trước!");
+    return;
+  }
+
+  const S = STYLES[selectedStyleKey];
   const aptType = document.getElementById('apt-type').value;
-  const area = document.getElementById('area').value || 'unspecified';
+  const area = document.getElementById('area').value;
   const orientation = document.getElementById('orientation').value;
-  const layoutDesc = document.getElementById('layout-desc').value.trim();
+  const layoutDesc = document.getElementById('layout-desc').value;
+  
   const viewAngle = document.getElementById('view-angle').value;
   const lighting = document.getElementById('lighting').value;
   const quality = document.getElementById('quality').value;
   const bg = document.getElementById('bg').value;
-  const optional = getOptional();
-  const colorLine = buildColorLine();
-  const layoutLine = layoutDesc ? `\nLayout description: ${layoutDesc}` : '';
-  const orientLine = orientation ? `\nEntrance orientation: ${orientation}` : '';
-  const optBlock = optional.length ? '\n' + optional.map((c,i) => `${11+i}. ${c}`).join('\n') : '';
 
-  const main =
-`You are a world-class architectural 3D visualization artist. I am providing a 2D floor plan image of a ${aptType} apartment (gross floor area including wall thickness: ${area} sqm${orientLine}).
+  // Build Optional Constraints
+  let optConstraints = "";
+  if (document.getElementById('c6').checked) optConstraints += "- Strictly DO NOT add any extra balconies, patios or loggias if they are not specified in the original 2D architectural blueprint layout.\n";
+  if (document.getElementById('c7').checked) optConstraints += "- Do not populate the floor plan with excessive indoor plants or greenery outside of designated descriptions.\n";
+  if (document.getElementById('c8').checked) optConstraints += "- Retain clean architectural walls. Do not insert randomized decorative gallery walls or wall artwork frames unless explicit.\n";
+  if (document.getElementById('c9').checked) optConstraints += "- Ensure complete materials and color uniformity across all unified zones. The primary floor finishing and wall paint must not randomly change hue between connecting rooms.\n";
 
-Generate a photorealistic cutaway dollhouse 3D render of this exact apartment.
+  // 1. MAIN PROMPT ASSEMBLY
+  const mainPrompt = `3D Architectural Floor Plan Visualizer Module
+Task: Reconstruct the attached 2D blueprint layout diagram into a high-fidelity, roofless 3D dollhouse cutaway architectural representation.
 
-RENDER SPECIFICATIONS:
-- View: ${viewAngle} cutaway with roof fully removed to reveal interior
-- Style: ${selStyle.prompt}${colorLine}
-- Lighting: ${lighting}
-- Quality: ${quality}
-- Background: ${bg}
-- All rooms fully furnished and styled consistently with the design theme${layoutLine}
+[1] BASE APARTMENT STRUCTURE CONFIGURATION
+- Apartment Scale Typology: ${aptType}
+- Gross Internal Floor Area: ${area} square meters
+${orientation ? `- Spatial Orientation Constraint: The ${orientation}\n` : ''}${layoutDesc ? `- Structural Layout Blueprint Guide: ${layoutDesc}\n` : ''}
+[2] IMMUTABLE ARCHITECTURAL FRAMEWORK RULES (Structural Integrity Layer)
+- Wall Partition Alignment: Maintain exact 100% position replication for all load-bearing structures, partition walls, and spatial dividers. Do not alter internal structural layout paths.
+- Door Placement Verification: Count and trace all doors precisely. Position them exactly as sketched. Each door structure must appear exactly once—no omissions, no architectural duplications.
+- Window Profiling: Replicate exact window count and physical wall attachments matching the dimensions of the architectural drawing.
+- Hinge and Wing Direction Logic: Door open swing sweeps must align strictly with the blueprint (inward vs. outward, left-hinged vs. right-hinged layouts). No mirroring allowed.
+- Fixed Appliance Placements: Built-in kitchen hobs, sinks, wet zone washing machines, toilets, and bathtubs must anchor precisely onto the designated layout quadrants. Functional surfaces must point upward correctly.
+- Spatial Proportions: Retain real layout aspect ratios. Large functional zones in the blueprint must translate accurately into logically spacious zones in the 3D generation.
 
-STRICT LAYOUT FIDELITY RULES — treat the floor plan as an immutable construction blueprint:
+[3] INTERIOR STYLE SPECIFICATION DESIGN LAYER
+- Style Archetype: ${S.name} (${S.variant})
+- Atmospheric Mood: ${S.mood.join(', ')}
 
-DOORS & WINDOWS — critical, audit before rendering:
-1. Count every door and every window in the floor plan. Render exactly that count — no more, no less.
-2. Each door appears exactly once at its exact position. No duplication, no omission.
-3. Each window appears exactly once at its exact wall position, with proportional width matching the floor plan.
-4. Door swing direction must match the floor plan precisely: inward vs outward, left-hinge vs right-hinge. Do not mirror or rotate.
-5. Do not invent doors or windows not present. Do not remove any that exist.
+- COLOUR ARCHITECTURE DESIGN FIELDS:
+${S.colours.map(c => `  * ${c.role}: ${c.label} (${c.hex}) — Usage: ${c.note}`).join('\n')}
+  * Saturated Accents Rule: Under no circumstance apply the 10% accent color to extensive wall surfaces or major open flooring panels.
 
-STRUCTURE & SPACE:
-6. Preserve ALL walls, partitions, columns, and structural elements exactly as shown — zero deviation.
-7. Room count is fixed: do not merge, split, add, or remove any room or zone.
-8. Spatial proportions must be preserved: a room larger in the floor plan must remain proportionally larger in 3D.
+- MATERIAL ARCHITECTURE DESIGN ELEMENTS:
+  * Primary Base Textures: ${S.primaryMat.join('; ')}
+  * Secondary & Accent Finishes: ${[...S.secondaryMat, ...S.accentMat].join('; ')}
 
-APPLIANCES & FURNITURE:
-9. All appliances (washing machine, oven, cooktop, toilet, bathtub, sink, fridge) must stay in exact position with functional face oriented upward — never flipped, tilted, or inverted.
-10. Furniture placement follows real-world logic: bed headboard against a wall, sofa facing the TV unit, dining table centred in the dining zone, desk near a wall — consistent with room orientation in the floor plan.${optBlock}
+- FORM AND GEOMETRICS GEOMETRY:
+${S.formLang.map(f => `  * ${f}`).join('\n')}
 
-OVERRIDING INSTRUCTION: Before rendering, mentally audit and count all doors and windows in the floor plan image. Every spatial decision must be directly traceable to a visible element in the provided image. Do not redesign, reimagine, or improve the layout in any way.`;
+- SURFACE AND STRUCTURE TREATMENT:
+  * Walls Finish: ${S.walls}
+  * Floors Finish: ${S.floors}
 
-  const neg =
-`Do not: add, remove, or duplicate any door or window; invent openings not in the floor plan; flip, invert, or rotate any appliance; mirror door swing directions; merge or split rooms; alter wall positions or thicknesses; change spatial proportions; place furniture in physically illogical positions (e.g. bed floating mid-room, sofa facing a blank wall with no screen). Every element must be directly traceable to the provided floor plan image.`;
+- ROOM FURNITURE IMPLEMENTATION STANDARDS:
+  * General Furnishing Principle: Headboards flush against partition walls, sofas oriented cleanly toward designated focal lines, dining tables organized perfectly inside the dining hub. Paths must clear doors entirely.
+  * Living / Dining Space Detail: ${S.rooms.living}
+  * Kitchen Zone Detail: ${S.rooms.kitchen}
+  * Private Bedroom Detail: ${S.rooms.bedroom}
+  * Bathroom & Sanitation Detail: ${S.rooms.bathroom}
+  * Utility & Hallway Circulation: ${S.rooms.utility}
 
-  const fix =
-`The previous render has a layout error. Regenerate strictly using the attached floor plan as the sole spatial reference.
+[4] CUTAWAY RENDER CAMERA AND LIGHTING SPECS
+- Composition Perspective: ${viewAngle}
+- Environment Illumination Profile: ${lighting}
+- Rendering Quality Threshold: ${quality}
+- Presentation Backdrop: ${bg}
+- Structural Cutaway Rules: ${S.cutaway}
+${optConstraints}`;
 
-Error to fix: [DESCRIBE SPECIFIC ERROR — examples:
-- "A door to the master bedroom has been duplicated — there is only ONE door, on the left wall."
-- "A window on the south facade is missing — the floor plan shows 2 windows on that wall, the render shows 1."
-- "The washing machine is rendered upside-down — drum face must be oriented upward."
-- "Living room and bedroom are merged — they must be separated by the wall shown in the floor plan."
-- "The sofa faces the wrong direction — it must face the TV wall on the right side of the living room."]
+  // 2. NEGATIVE PROMPT ASSEMBLY
+  const negPrompt = `blurry rendering, distorted layout proportions, rearranged partition walls, missing doors, duplicated doors, missing windows, mirrored layout, floating furniture, upside-down toilets, flipped washing machines, blocking circulation pathways, windows transformed into doors.
+Style Violations to Avoid based on ${S.variant}:
+${S.avoid.map(a => `- Do not include: ${a}`).join('\n')}
+Do not bleed unrelated decorative elements or contrasting palettes into this pristine ${S.name} blueprint framework.`;
 
-Keep all design style, color palette, lighting, and camera angle unchanged. Correct only the stated error and nothing else.`;
+  // 3. FIX PROMPT ASSEMBLY
+  const fixPrompt = `Architectural Correction Instruction
+Referencing the previously generated 3D floor plan image, there is an architectural layout/interior decoration defect that violates the original blueprint constraint. Please perform an in-place generation fix.
 
-  document.getElementById('main-prompt').textContent = main;
-  document.getElementById('neg-prompt').textContent = neg;
-  document.getElementById('fix-prompt').textContent = fix;
-  const sec = document.getElementById('out-section');
-  sec.style.display = 'block';
-  setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+[1] IDENTIFIED ERRORS TO RECTIFY:
+- Fix the following spatial mismatch immediately: [ĐIỀN LỖI SAI VÀO ĐÂY — Ví dụ: Cửa chính bị đặt sai vị trí góc trái, hoặc giường ngủ đang chặn lối đi vệ sinh]
+
+[2] RE-ENFORCING ARCHITECTURAL SPECIFICATION MANDATES:
+- Re-align structural framework to matches original 2D blueprint partitioning rules exactly.
+- Enforce the chosen ${S.name} (${S.variant}) interior rules:
+  * Strict Palette Rules: Dominant 60% remains ${S.colours[0].hex}, Secondary 30% remains ${S.colours[1].hex}.
+  * Strict Material Rule: ${S.primaryMat[0]}.
+  * Avoid Layout Elements: ${S.avoid.slice(0, 3).join(', ')}.
+- Render Style: Keep identical camera view angle (${viewAngle}), lighting profile, and backdrop rules. Do not change correct rooms while executing this specific point fix.`;
+
+  // Inject Outputs into UI
+  document.getElementById('main-prompt').textContent = mainPrompt.trim();
+  document.getElementById('neg-prompt').textContent = negPrompt.trim();
+  document.getElementById('fix-prompt').textContent = fixPrompt.trim();
+  
+  // Show Section
+  document.getElementById('out-section').style.display = 'block';
+  
+  // Scroll Smooth
+  document.getElementById('out-section').scrollIntoView({ behavior: 'smooth' });
 }
 
-function copyText(id, btn, label) {
-  navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => {
-    btn.textContent = '✓  Đã copy';
+function copyText(elementId, btn) {
+  const text = document.getElementById(elementId).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const originalText = btn.innerHTML;
     btn.classList.add('copied');
+    btn.innerHTML = '✓ Đã copy';
     setTimeout(() => {
-      btn.innerHTML = `⎘&nbsp; ${label}`;
       btn.classList.remove('copied');
+      btn.innerHTML = originalText;
     }, 2000);
   });
 }
