@@ -1,7 +1,7 @@
-import { CATALOG, OPEN_TYPES, ROOM_TYPES, DIR_VI, dirKey, norm360, emptyLayout, sampleLayout, uid, dist, projOnSeg, polyArea, polyCentroid, pointInPoly, itemCorners, hostWall, opDefaults, isGlazing, MECH, GLASS_HEIGHTS, heightKey, CEIL_H } from './model.js';
-import { detectLayout } from './detect.js';
-import { Viewer3D } from './scene3d.js';
-import { buildPrompts, inventory, warnings } from './prompt.js';
+import { CATALOG, OPEN_TYPES, ROOM_TYPES, DIR_VI, dirKey, norm360, emptyLayout, sampleLayout, uid, dist, projOnSeg, polyArea, polyCentroid, pointInPoly, itemCorners, hostWall, opDefaults, isGlazing, MECH, GLASS_HEIGHTS, heightKey, CEIL_H } from './model.js?v=8';
+import { detectLayout } from './detect.js?v=8';
+import { Viewer3D } from './scene3d.js?v=8';
+import { buildPrompts, inventory, warnings } from './prompt.js?v=8';
 
 {
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
