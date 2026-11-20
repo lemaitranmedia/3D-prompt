@@ -6,7 +6,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { hostWall, projOnSeg, layoutBBox, polyCentroid, polyArea, pointInPoly } from './model.js';
+import { hostWall, projOnSeg, layoutBBox, polyCentroid, polyArea, pointInPoly, opDefaults, isGlazing, CEIL_H } from './model.js';
 import { buildItem, addDecor, clearGeoCache } from './furniture.js';
 
 const DOOR_H = 2.1, WIN_SILL = 0.9, WIN_HEAD = 2.3, SLAB = 0.22;
@@ -120,11 +120,13 @@ function wallPieces(w, openings) {
   const pieces = []; let s = 0;
   for (const c of cuts) {
     if (c.a > s + 0.005) pieces.push({ a: s, b: c.a, y0: -SLAB, y1: null });
-    const t = c.o.type;
-    pieces.push({ a: c.a, b: c.b, y0: -SLAB, y1: 0, open: c.o, sill: true });                 // under the opening, down to the slab
-    if (t === 'door' || t === 'main' || t === 'slide') pieces.push({ a: c.a, b: c.b, y0: t === 'slide' ? 2.4 : DOOR_H, y1: null, open: c.o });
-    else if (t === 'window') { pieces.push({ a: c.a, b: c.b, y0: 0, y1: WIN_SILL, open: c.o }); pieces.push({ a: c.a, b: c.b, y0: WIN_HEAD, y1: null, open: c.o }); }
-    else if (t === 'glass') pieces.push({ a: c.a, b: c.b, y0: 0, y1: 0.08, open: c.o });
+    const o = opDefaults(c.o);
+    pieces.push({ a: c.a, b: c.b, y0: -SLAB, y1: 0, open: o, sill: true });                 // under the opening, down to the slab
+    if (!isGlazing(o)) pieces.push({ a: c.a, b: c.b, y0: DOOR_H, y1: null, open: o });
+    else {
+      if (o.sill > 0.01) pieces.push({ a: c.a, b: c.b, y0: 0, y1: o.sill, open: o });
+      if (o.head < CEIL_H - 0.01) pieces.push({ a: c.a, b: c.b, y0: o.head, y1: null, open: o });
+    }
     s = Math.max(s, c.b);
   }
   if (s < L - 0.005) pieces.push({ a: s, b: L, y0: -SLAB, y1: null });
@@ -270,35 +272,62 @@ export class Viewer3D {
       const ux = (o.x2 - o.x1) / L, uy = (o.y2 - o.y1) / L, nx = -uy, ny = ux, ang = Math.atan2(uy, ux);
       const t = wl ? wl.t : 0.12, mx = (o.x1 + o.x2) / 2, my = (o.y1 + o.y2) / 2;
       const addBox = (w, h, d, y, mat, ox = 0, oz = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(mx + ux * ox + nx * oz, y, my + uy * ox + ny * oz); m.rotation.y = -ang; m.castShadow = true; m.receiveShadow = true; this.root.add(m); markLines(m); return m; };
-      if (o.type === 'window' || o.type === 'glass' || o.type === 'slide') {
-        const y0 = o.type === 'window' ? WIN_SILL : o.type === 'glass' ? 0.08 : 0;
-        const y1 = Math.min(o.type === 'window' ? WIN_HEAD : o.type === 'slide' ? 2.4 : 2.7, Hh);
+      opDefaults(o);
+      const arc = (hx, hy, fx, fy, sx, sy, R) => {             // swing arc on the floor (line views)
+        if (mode === 'style') return;
+        const a0 = Math.atan2(fy - hy, fx - hx), a1 = Math.atan2(sy, sx);
+        let da = a1 - a0; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+        const pts = []; for (let i = 0; i <= 24; i++) { const aa = a0 + da * i / 24; pts.push(new THREE.Vector3(hx + Math.cos(aa) * R, 0.012, hy + Math.sin(aa) * R)); }
+        this.root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: '#333' })));
+      };
+      // a leaf of width lw hinged at (hx,hy), opened 90° toward the swing side
+      const leafAt = (hx, hy, lw, toward, y0, h, mat, glass) => {
+        const sgn = o.swing >= 0 ? 1 : -1;
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(glass ? 0.02 : 0.045, h - 0.01, lw - 0.02), glass ? M.glass : mat);
+        body.castShadow = !glass; body.receiveShadow = true; g.add(body); markLines(body);
+        if (glass && mode === 'style') { for (const z of [-lw / 2 + 0.02, lw / 2 - 0.02]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.04, h, 0.04), M.frame); f.position.z = z; g.add(f); } for (const yy of [-h / 2 + 0.02, h / 2 - 0.02]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, lw), M.frame); f.position.y = yy; g.add(f); } }
+        g.position.set(hx + nx * sgn * lw / 2 + ux * toward * 0.03, y0 + h / 2, hy + ny * sgn * lw / 2 + uy * toward * 0.03); g.rotation.y = -ang;
+        this.root.add(g);
+        if (mode === 'style' && !glass) { const hd = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.02), M.metal); const k = sgn * (lw - 0.1); hd.position.set(hx + nx * k + ux * toward * 0.07, 1.0, hy + ny * k + uy * toward * 0.07); hd.rotation.y = -ang; this.root.add(hd); }
+        arc(hx, hy, hx + ux * toward * lw, hy + uy * toward * lw, nx * sgn, ny * sgn, lw);
+      };
+      if (isGlazing(o)) {
+        const y0 = Math.max(0, o.sill), y1 = Math.min(o.head, Hh);
         if (y1 > y0 + 0.02) {
-          const g = addBox(L, y1 - y0, 0.012, (y0 + y1) / 2, M.glass); g.castShadow = false;
-          addBox(L, 0.045, t * 0.7, y0 + 0.022, M.frame);
-          if (y1 >= (o.type === 'window' ? WIN_HEAD : 2.4) - 0.001) addBox(L, 0.045, t * 0.7, y1 - 0.022, M.frame);
-          const panes = Math.max(1, Math.round(L / (o.type === 'glass' ? 1.4 : 0.9)));
-          for (let i = 0; i <= panes; i++) addBox(0.04, y1 - y0, t * 0.7, (y0 + y1) / 2, M.frame, -L / 2 + i * L / panes);
-          if (o.type === 'window') addBox(L + 0.06, 0.03, t + 0.06, WIN_SILL - 0.015, M.stone || M.frame);
-          if (o.type === 'glass') addBox(L, 0.035, 0.06, Math.min(1.05, y1 - 0.02), M.frame);       // handrail
+          const rail = o.sill < 0.02 && o.head <= 1.3;
+          if (o.mech === 'swing' || o.mech === 'swing2') {
+            if (o.mech === 'swing2') { leafAt(o.x1, o.y1, L / 2, 1, y0, y1 - y0, null, true); leafAt(o.x2, o.y2, L / 2, -1, y0, y1 - y0, null, true); }
+            else { const h1 = o.hinge === 2; leafAt(h1 ? o.x2 : o.x1, h1 ? o.y2 : o.y1, L, h1 ? -1 : 1, y0, y1 - y0, null, true); }
+            if (mode === 'style') { for (const s2 of [-1, 1]) addBox(0.05, y1 - y0, t * 0.7, (y0 + y1) / 2, M.frame, s2 * L / 2); if (y1 < Hh) addBox(L, 0.05, t * 0.7, y1, M.frame); }
+          } else if (o.mech === 'slide') {
+            const d = o.slideDir >= 0 ? 1 : -1;
+            for (const [k, oz] of [[-1, 0.025], [1, -0.025]]) {
+              const pw = L * 0.52, ox = k * (L / 2 - pw / 2) + (k === d ? -d * L * 0.1 : 0);
+              const g = addBox(pw, y1 - y0, 0.012, (y0 + y1) / 2, M.glass, ox, oz); g.castShadow = false;
+              for (const e of [-1, 1]) addBox(0.04, y1 - y0, 0.04, (y0 + y1) / 2, M.frame, ox + e * pw / 2, oz);
+            }
+            addBox(L, 0.045, t * 0.8, y0 + 0.022, M.frame); if (y1 >= o.head - 0.001) addBox(L, 0.045, t * 0.8, y1 - 0.022, M.frame);
+          } else {
+            const g = addBox(L, y1 - y0, 0.012, (y0 + y1) / 2, M.glass); g.castShadow = false;
+            addBox(L, 0.045, t * 0.7, y0 + 0.022, M.frame);
+            if (y1 >= o.head - 0.001) addBox(L, 0.045, t * 0.7, y1 - 0.022, M.frame);
+            const panes = Math.max(1, Math.round(L / (rail ? 1.4 : 0.9)));
+            for (let i = 0; i <= panes; i++) addBox(rail ? 0.03 : 0.04, y1 - y0, t * 0.7, (y0 + y1) / 2, M.frame, -L / 2 + i * L / panes);
+            if (rail) addBox(L, 0.04, 0.07, y1 + 0.01, M.frame);                        // handrail
+          }
+          if (o.sill > 0.3) addBox(L + 0.06, 0.03, t + 0.06, o.sill - 0.015, M.stone || M.frame);   // window board
         }
         continue;
       }
-      // door: frame + leaf open at 90° on the swing side
-      const hx = o.hinge === 2 ? o.x2 : o.x1, hy = o.hinge === 2 ? o.y2 : o.y1, sgn = o.swing >= 0 ? 1 : -1;
-      const leafH = Math.min(DOOR_H, Hh);
+      // doors (1 or 2 leaves), frame in the styled view
+      const leafH = Math.min(DOOR_H, Hh), dmat = o.type === 'main' ? M.wood : M.joinery;
       if (mode === 'style') {
-        for (const s of [-1, 1]) addBox(0.05, leafH, t + 0.04, leafH / 2, M.joinery, s * (L / 2 + 0.005));
+        for (const s2 of [-1, 1]) addBox(0.05, leafH, t + 0.04, leafH / 2, M.joinery, s2 * (L / 2 + 0.005));
         if (Hh > DOOR_H) addBox(L + 0.1, 0.05, t + 0.04, DOOR_H + 0.02, M.joinery);
       }
-      const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.045, leafH - 0.01, L - 0.02), o.type === 'main' ? (M.accentDoor || M.wood) : M.joinery);
-      const lx = hx + nx * sgn * L / 2, ly = hy + ny * sgn * L / 2, off = o.hinge === 2 ? -0.03 : 0.03;
-      leaf.position.set(lx + ux * off, leafH / 2, ly + uy * off); leaf.rotation.y = -ang; leaf.castShadow = leaf.receiveShadow = true; this.root.add(leaf); markLines(leaf);
-      if (mode === 'style') { const hd = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.02), M.metal); const k = sgn * (L - 0.1); hd.position.set(hx + nx * k + ux * (off * 2.2), 1.0, hy + ny * k + uy * (off * 2.2)); hd.rotation.y = -ang; this.root.add(hd); }
-      const fx = o.hinge === 2 ? o.x1 : o.x2, fy = o.hinge === 2 ? o.y1 : o.y2;
-      const a0 = Math.atan2(fy - hy, fx - hx), a1 = Math.atan2(ny * sgn, nx * sgn);
-      let da = a1 - a0; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
-      if (mode !== 'style') { const pts = []; for (let i = 0; i <= 24; i++) { const aa = a0 + da * i / 24; pts.push(new THREE.Vector3(hx + Math.cos(aa) * L, 0.012, hy + Math.sin(aa) * L)); } this.root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: '#333' }))); }
+      if (o.leaves === 2) { leafAt(o.x1, o.y1, L / 2, 1, 0, leafH, dmat, false); leafAt(o.x2, o.y2, L / 2, -1, 0, leafH, dmat, false); }
+      else { const h2 = o.hinge === 2; leafAt(h2 ? o.x2 : o.x1, h2 ? o.y2 : o.y1, L, h2 ? -1 : 1, 0, leafH, dmat, false); }
     }
 
     // furniture & fixtures
