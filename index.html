@@ -145,9 +145,10 @@ td.n,th.n{text-align:right;white-space:nowrap}
       <button class="tool" data-mode="door" title="Cửa đi (D)">Cửa đi</button>
       <button class="tool" data-mode="main" title="Cửa chính">Cửa chính</button>
       <button class="tool" data-mode="window">Cửa sổ</button>
-      <button class="tool" data-mode="slide">Cửa lùa kính</button>
-      <button class="tool" data-mode="glass">Lan can kính</button>
+      <button class="tool" data-mode="slide">Cửa kính</button>
+      <button class="tool" data-mode="glass">Vách / lan can kính</button>
       <button class="tool" data-mode="item" title="Đặt nội thất/thiết bị (F)">Nội thất</button>
+      <button class="tool" data-mode="erase" title="Bấm vào đối tượng để xoá">Xoá</button>
       <span class="sep"></span>
       <button class="tool" data-mode="scale" title="Đo tỷ lệ">Đo tỷ lệ</button>
       <button class="tool" id="btn-undo" title="Hoàn tác (Ctrl+Z)">↶ Hoàn tác</button>
@@ -179,22 +180,12 @@ td.n,th.n{text-align:right;white-space:nowrap}
       </div>
 
       <div class="card">
-        <h3>AI đọc layout <span id="ai-engine">Claude</span></h3>
-        <p class="muted">AI đọc ảnh và vẽ sẵn tường, phòng, cửa, thiết bị. Kết quả là bản nháp: chị kiểm tra và chỉnh lại bằng thanh công cụ trước khi sang bước 2.</p>
-        <div id="ai-gem" style="display:none;margin-top:8px">
-          <label class="f">Gemini API key (miễn phí)
-            <input type="password" id="ai-key" autocomplete="off" placeholder="AIza…">
-          </label>
-          <label class="row small" style="margin-top:6px;gap:8px"><input type="checkbox" id="ai-remember"> Ghi nhớ key trên trình duyệt này</label>
-          <label class="f" style="margin-top:8px">Model
-            <select id="ai-model"><option>gemini-3.5-flash</option><option>gemini-3.1-flash-lite</option></select>
-          </label>
-          <p class="small" style="margin-top:6px">Lấy key tại aistudio.google.com/apikey, không cần bật thanh toán. Chỉ dùng để đọc ảnh, không vẽ ảnh, nên nằm trong hạn mức miễn phí. Lưu ý: với key miễn phí, Google có thể dùng dữ liệu gửi lên để cải thiện sản phẩm.</p>
-        </div>
+        <h3>Tự động nhận diện <span>không cần AI</span></h3>
+        <p class="muted">Công cụ tự đọc tường, phòng, cửa đi (kèm hướng mở), cửa chính, cửa kính và vách kính trực tiếp trên máy, không gửi ảnh đi đâu. Đọc tốt với bản vẽ có tường tô đặc màu tối. Kết quả là bản nháp: chị kiểm tra rồi sửa, xoá hoặc vẽ lại bằng thanh công cụ. Nội thất đặt bằng nút "Nội thất".</p>
         <label class="f" style="margin-top:8px">Chiều ngang tổng căn hộ, mép ngoài (m) — để trống nếu chưa biết
           <input type="number" id="ai-width" step="0.1" placeholder="VD: 15.4">
         </label>
-        <button class="btn pri full" id="btn-ai" style="margin-top:10px">Cho AI đọc layout</button>
+        <button class="btn pri full" id="btn-ai" style="margin-top:10px">Tự động nhận diện</button>
         <div class="msg" id="ai-msg"></div>
       </div>
 
