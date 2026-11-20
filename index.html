@@ -179,8 +179,18 @@ td.n,th.n{text-align:right;white-space:nowrap}
       </div>
 
       <div class="card">
-        <h3>AI đọc layout <span>thử nghiệm</span></h3>
-        <p class="muted">Claude đọc ảnh và vẽ sẵn tường, phòng, cửa, thiết bị. Kết quả là bản nháp: chị kiểm tra và chỉnh lại bằng thanh công cụ trước khi sang bước 2.</p>
+        <h3>AI đọc layout <span id="ai-engine">Claude</span></h3>
+        <p class="muted">AI đọc ảnh và vẽ sẵn tường, phòng, cửa, thiết bị. Kết quả là bản nháp: chị kiểm tra và chỉnh lại bằng thanh công cụ trước khi sang bước 2.</p>
+        <div id="ai-gem" style="display:none;margin-top:8px">
+          <label class="f">Gemini API key (miễn phí)
+            <input type="password" id="ai-key" autocomplete="off" placeholder="AIza…">
+          </label>
+          <label class="row small" style="margin-top:6px;gap:8px"><input type="checkbox" id="ai-remember"> Ghi nhớ key trên trình duyệt này</label>
+          <label class="f" style="margin-top:8px">Model
+            <select id="ai-model"><option>gemini-3.5-flash</option><option>gemini-3.1-flash-lite</option></select>
+          </label>
+          <p class="small" style="margin-top:6px">Lấy key tại aistudio.google.com/apikey, không cần bật thanh toán. Chỉ dùng để đọc ảnh, không vẽ ảnh, nên nằm trong hạn mức miễn phí. Lưu ý: với key miễn phí, Google có thể dùng dữ liệu gửi lên để cải thiện sản phẩm.</p>
+        </div>
         <label class="f" style="margin-top:8px">Chiều ngang tổng căn hộ, mép ngoài (m) — để trống nếu chưa biết
           <input type="number" id="ai-width" step="0.1" placeholder="VD: 15.4">
         </label>
