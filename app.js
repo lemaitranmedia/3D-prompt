@@ -1,4 +1,5 @@
-import { CATALOG, OPEN_TYPES, ROOM_TYPES, DIR_VI, dirKey, norm360, emptyLayout, sampleLayout, uid, dist, projOnSeg, polyArea, polyCentroid, pointInPoly, itemCorners, hostWall } from './model.js';
+import { CATALOG, OPEN_TYPES, ROOM_TYPES, DIR_VI, dirKey, norm360, emptyLayout, sampleLayout, uid, dist, projOnSeg, polyArea, polyCentroid, pointInPoly, itemCorners, hostWall, opDefaults, isGlazing, MECH, GLASS_HEIGHTS, heightKey, CEIL_H } from './model.js';
+import { detectLayout } from './detect.js';
 import { Viewer3D } from './scene3d.js';
 import { buildPrompts, inventory, warnings } from './prompt.js';
 
@@ -80,14 +81,26 @@ function draw2d() {
     const [a, b] = toS(o.x1, o.y1), [c, d] = toS(o.x2, o.y2);
     ctx.strokeStyle = sel === o ? '#fff' : COL[o.type]; ctx.lineWidth = Math.max(4, 0.16 * vw.z); ctx.lineCap = 'butt';
     ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke();
-    if (o.type === 'door' || o.type === 'main') {
-      const Lm = dist(o.x1, o.y1, o.x2, o.y2), ux = (o.x2 - o.x1) / Lm, uy = (o.y2 - o.y1) / Lm, nx = -uy * o.swing, ny = ux * o.swing;
-      const hx = o.hinge === 2 ? o.x2 : o.x1, hy = o.hinge === 2 ? o.y2 : o.y1, fx = o.hinge === 2 ? o.x1 : o.x2, fy = o.hinge === 2 ? o.y1 : o.y2;
-      const [hsx, hsy] = toS(hx, hy), [lx, ly] = toS(hx + nx * Lm, hy + ny * Lm);
+    opDefaults(o);
+    const Lm = dist(o.x1, o.y1, o.x2, o.y2); if (Lm < 0.01) continue;
+    const ux = (o.x2 - o.x1) / Lm, uy = (o.y2 - o.y1) / Lm, nx = -uy * o.swing, ny = ux * o.swing;
+    const leaf = (hx, hy, fx, fy, R) => {
+      const [hsx, hsy] = toS(hx, hy), [lx, ly] = toS(hx + nx * R, hy + ny * R);
       ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(hsx, hsy); ctx.lineTo(lx, ly); ctx.stroke();
       const a0 = Math.atan2(fy - hy, fx - hx), a1 = Math.atan2(ny, nx); let da = a1 - a0; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
-      ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(hsx, hsy, Lm * vw.z, a0, a0 + da, da < 0); ctx.stroke(); ctx.setLineDash([]);
+      ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(hsx, hsy, R * vw.z, a0, a0 + da, da < 0); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(hsx, hsy, 3, 0, Math.PI * 2); ctx.fill();
+    };
+    const mech = isGlazing(o) ? o.mech : (o.leaves === 2 ? 'swing2' : 'swing');
+    const mx = (o.x1 + o.x2) / 2, my = (o.y1 + o.y2) / 2;
+    if (mech === 'swing2') { leaf(o.x1, o.y1, mx, my, Lm / 2); leaf(o.x2, o.y2, mx, my, Lm / 2); }
+    else if (mech === 'swing') { const h2 = o.hinge === 2; leaf(h2 ? o.x2 : o.x1, h2 ? o.y2 : o.y1, h2 ? o.x1 : o.x2, h2 ? o.y1 : o.y2, Lm); }
+    else if (mech === 'slide') {      // arrow showing the sliding direction
+      const d = o.slideDir >= 0 ? 1 : -1, [ax, ay] = toS(mx - ux * d * Lm * 0.25, my - uy * d * Lm * 0.25), [bx, by] = toS(mx + ux * d * Lm * 0.25, my + uy * d * Lm * 0.25);
+      ctx.fillStyle = ctx.strokeStyle; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      const ang = Math.atan2(by - ay, bx - ax); ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - 9 * Math.cos(ang - 0.5), by - 9 * Math.sin(ang - 0.5)); ctx.lineTo(bx - 9 * Math.cos(ang + 0.5), by - 9 * Math.sin(ang + 0.5)); ctx.closePath(); ctx.fill();
     }
+    if (isGlazing(o) && vw.z > 30) { const [tx, ty] = toS(mx, my); ctx.fillStyle = '#9fe0c9'; ctx.font = '10px DM Sans'; ctx.textAlign = 'center'; ctx.fillText(`${o.sill.toFixed(1)}–${o.head.toFixed(1)}m`, tx + nx * 14, ty + ny * 14 - 4); }
   }
   // items
   for (const it of L.items) {
@@ -140,6 +153,7 @@ function placeOpening(type, x, y) {
   let t = Math.max(half, Math.min(Lw - half, p.t * Lw));
   snap();
   const o = { id: uid('o'), type, x1: +(w.x1 + ux * (t - half)).toFixed(3), y1: +(w.y1 + uy * (t - half)).toFixed(3), x2: +(w.x1 + ux * (t + half)).toFixed(3), y2: +(w.y1 + uy * (t + half)).toFixed(3), hinge: 1, swing: 1 };
+  opDefaults(o);
   // default swing toward the clicked side
   const nx = -uy, ny = ux; o.swing = ((x - p.x) * nx + (y - p.y) * ny) >= 0 ? 1 : -1;
   L.openings.push(o); sel = o; afterChange();
@@ -167,6 +181,7 @@ cv.addEventListener('pointerdown', e => {
     if (mode === 'scale') { draft.pts.push(p); finishScale(); return; }
     if (mode === 'room') { const f = draft.pts[0]; if (draft.pts.length > 2 && dist(p[0], p[1], f[0], f[1]) < 1e-6) { finishRoom(); return; } draft.pts.push(p); draw2d(); return; }
   }
+  if (mode === 'erase') { const p = pick(x, y); if (p) { sel = p; delSel(); } return; }
   if (OPEN_TYPES[mode]) { placeOpening(mode, x, y); return; }
   if (mode === 'item') { snap(); const c = CATALOG[itemType]; const it = { id: uid('i'), type: itemType, x: +x.toFixed(3), y: +y.toFixed(3), w: c.w, d: c.d, rot: ghostRot }; L.items.push(it); sel = it; afterChange(); }
 });
@@ -236,6 +251,7 @@ const HINTS = {
   main: 'Bấm lên tường tại vị trí cửa chính, phía cánh mở vào.',
   window: 'Bấm lên tường để đặt cửa sổ.', slide: 'Bấm lên tường để đặt cửa lùa kính.', glass: 'Bấm lên tường mặt ngoài để đặt lan can / vách kính.',
   item: 'Chọn loại ở bảng bên phải rồi bấm để đặt. R để xoay 90°. Cạnh cam = mặt trước của món đồ.',
+  erase: 'Bấm vào tường, cửa, phòng hoặc món nội thất để xoá ngay. Hoàn tác bằng Ctrl+Z.',
   scale: 'Bấm 2 điểm của một kích thước đã biết (VD: chiều ngang tổng căn), rồi nhập độ dài thật.'
 };
 function setHint(t) { $('#hint').textContent = t || ''; }
@@ -258,10 +274,17 @@ function showProps() {
   let h = '';
   if (k === 'wall') h = `<p class="muted" style="margin-bottom:8px">Tường dài ${dist(sel.x1, sel.y1, sel.x2, sel.y2).toFixed(2)} m</p><div class="grid2">${num('t', 'Độ dày (m)')}</div>`;
   if (k === 'open') {
-    const w = dist(sel.x1, sel.y1, sel.x2, sel.y2);
+    opDefaults(sel);
+    const w = dist(sel.x1, sel.y1, sel.x2, sel.y2), gl = isGlazing(sel);
+    const mech = gl ? sel.mech : (sel.leaves === 2 ? 'swing2' : 'swing');
+    const hk = gl ? heightKey(sel) : '';
     h = `<div class="grid2"><label class="f">Loại<select data-k="type">${Object.entries(OPEN_TYPES).map(([t, o]) => `<option value="${t}"${t === sel.type ? ' selected' : ''}>${o.vi}</option>`).join('')}</select></label>
       <label class="f">Bề rộng (m)<input type="number" step="0.05" id="op-w" value="${w.toFixed(2)}"></label></div>
-      ${sel.type === 'door' || sel.type === 'main' ? `<div class="row" style="margin-top:8px"><button class="btn" id="op-hinge">Đổi bên bản lề</button><button class="btn" id="op-swing">Đổi chiều mở</button></div>` : ''}`;
+      <label class="f" style="margin-top:8px">Kiểu mở<select id="op-mech">${(gl ? ['fixed', 'slide', 'swing', 'swing2'] : ['swing', 'swing2']).map(m => `<option value="${m}"${m === mech ? ' selected' : ''}>${MECH[m].vi}</option>`).join('')}</select></label>
+      ${mech === 'swing' || mech === 'swing2' ? `<div class="row" style="margin-top:8px"><button class="btn" id="op-rot" title="Xoay vòng 4 hướng mở">↻ Xoay hướng mở</button>${mech === 'swing' ? '<button class="btn" id="op-hinge">Đổi bên bản lề</button>' : ''}<button class="btn" id="op-swing">Mở vào / mở ra</button></div>` : ''}
+      ${mech === 'slide' ? '<div class="row" style="margin-top:8px"><button class="btn" id="op-slide">⇄ Đổi hướng lùa</button></div>' : ''}
+      ${gl ? `<label class="f" style="margin-top:8px">Chiều cao kính<select id="op-hp">${Object.entries(GLASS_HEIGHTS).map(([k2, v]) => `<option value="${k2}"${k2 === hk ? ' selected' : ''}>${v[0]}</option>`).join('')}<option value="custom"${hk === 'custom' ? ' selected' : ''}>Tuỳ chỉnh…</option></select></label>
+      <div class="grid2" style="margin-top:8px"><label class="f">Bệ kính, từ sàn (m)<input type="number" step="0.05" min="0" max="${CEIL_H}" id="op-sill" value="${sel.sill.toFixed(2)}"></label><label class="f">Đỉnh kính (m, trần = ${CEIL_H})<input type="number" step="0.05" min="0.3" max="${CEIL_H}" id="op-head" value="${sel.head.toFixed(2)}"></label></div>` : ''}`;
   }
   if (k === 'room') h = `<div class="grid2"><label class="f">Tên phòng<input type="text" data-k="name" value="${sel.name.replace(/"/g, '&quot;')}"></label>
       <label class="f">Loại<select data-k="type">${Object.entries(ROOM_TYPES).map(([t, v]) => `<option value="${t}"${t === sel.type ? ' selected' : ''}>${v}</option>`).join('')}</select></label></div>
@@ -270,10 +293,18 @@ function showProps() {
       ${num('w', 'Rộng (m)')}${num('d', 'Sâu (m)')}<label class="f">Mặt trước<select data-k="rot">${[0, 90, 180, 270].map(a => `<option value="${a}"${dirKey(sel.rot) === a ? ' selected' : ''}>${DIR_VI[a]}</option>`).join('')}</select></label></div>
       ${sel.type === 'sofa_l' ? `<label class="row" style="margin-top:8px;gap:8px"><input type="checkbox" id="it-mir"${sel.mirror ? ' checked' : ''}> Đảo phía chân sofa</label>` : ''}`;
   P.innerHTML = h + `<div class="row" style="margin-top:10px"><button class="btn" id="p-del">Xoá</button>${k === 'item' ? '<button class="btn" id="p-dup">Nhân bản</button>' : ''}</div>`;
-  $$('#props [data-k]').forEach(inp => inp.onchange = () => { snap(); const key = inp.dataset.k; let v = inp.value; if (inp.type === 'number' || key === 'rot') v = +v; sel[key] = v; if (key === 'type' && k === 'item') { const c = CATALOG[v]; sel.w = c.w; sel.d = c.d; } afterChange(); });
+  $$('#props [data-k]').forEach(inp => inp.onchange = () => { snap(); const key = inp.dataset.k; let v = inp.value; if (inp.type === 'number' || key === 'rot') v = +v; sel[key] = v; if (key === 'type' && k === 'item') { const c = CATALOG[v]; sel.w = c.w; sel.d = c.d; } if (key === 'type' && k === 'open') { ['mech', 'sill', 'head', 'leaves'].forEach(q => delete sel[q]); opDefaults(sel); } afterChange(); });
   const ow = $('#op-w'); if (ow) ow.onchange = () => { snap(); const w = +ow.value, Lm = dist(sel.x1, sel.y1, sel.x2, sel.y2), mx = (sel.x1 + sel.x2) / 2, my = (sel.y1 + sel.y2) / 2, ux = (sel.x2 - sel.x1) / Lm, uy = (sel.y2 - sel.y1) / Lm; sel.x1 = +(mx - ux * w / 2).toFixed(3); sel.y1 = +(my - uy * w / 2).toFixed(3); sel.x2 = +(mx + ux * w / 2).toFixed(3); sel.y2 = +(my + uy * w / 2).toFixed(3); afterChange(); };
   if ($('#op-hinge')) $('#op-hinge').onclick = () => { snap(); sel.hinge = sel.hinge === 2 ? 1 : 2; afterChange(); };
   if ($('#op-swing')) $('#op-swing').onclick = () => { snap(); sel.swing = -sel.swing; afterChange(); };
+  if ($('#op-rot')) $('#op-rot').onclick = () => {   // cycle the 4 combinations of hinge side × opening side
+    snap(); const st = [[1, 1], [2, 1], [2, -1], [1, -1]]; const i = st.findIndex(([a, b]) => a === sel.hinge && b === sel.swing);
+    [sel.hinge, sel.swing] = st[(i + 1) % 4]; afterChange(); };
+  if ($('#op-slide')) $('#op-slide').onclick = () => { snap(); sel.slideDir = -(sel.slideDir || 1); afterChange(); };
+  if ($('#op-mech')) $('#op-mech').onchange = e => { snap(); const m = e.target.value; if (isGlazing(sel)) sel.mech = m; else sel.leaves = m === 'swing2' ? 2 : 1; afterChange(); };
+  if ($('#op-hp')) $('#op-hp').onchange = e => { const v = GLASS_HEIGHTS[e.target.value]; if (!v) return; snap(); sel.sill = v[1]; sel.head = v[2]; afterChange(); };
+  if ($('#op-sill')) $('#op-sill').onchange = e => { snap(); sel.sill = Math.max(0, Math.min(+e.target.value, sel.head - 0.2)); afterChange(); };
+  if ($('#op-head')) $('#op-head').onchange = e => { snap(); sel.head = Math.min(CEIL_H, Math.max(+e.target.value, sel.sill + 0.2)); afterChange(); };
   if ($('#it-mir')) $('#it-mir').onchange = e => { snap(); sel.mirror = e.target.checked; afterChange(); };
   $('#p-del').onclick = delSel;
   if ($('#p-dup')) $('#p-dup').onclick = () => { snap(); const c = { ...sel, id: uid('i'), x: sel.x + 0.3, y: sel.y + 0.3 }; L.items.push(c); sel = c; afterChange(); };
@@ -316,104 +347,66 @@ $('#btn-save-json').onclick = () => saveFile('layout-boc-mai.json', new Blob([JS
 $('#in-json').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const d = JSON.parse(await f.text()); if (!d.walls) throw 0; loadLayout(d); } catch (err) { modalMsg('File không đúng định dạng layout.'); } e.target.value = ''; };
 ['apt-type', 'area', 'orientation'].forEach(id => $('#' + id).onchange = e => { L.meta[{ 'apt-type': 'aptType', area: 'area', orientation: 'orientation' }[id]] = e.target.value; saveLocal(); });
 
-// ── AI read layout (Claude via the page's `sample` capability) ──
-let sampleFn = null;
-(async () => { try { if (window.claude && window.claude.use) sampleFn = await window.claude.use('sample'); } catch (e) {} if (!sampleFn) { $('#ai-gem').style.display = ''; $('#ai-engine').textContent = 'Gemini (key miễn phí)'; } })();
-
-// Outside Claude: read the plan with a Gemini Flash model (text output — covered by Gemini's free tier)
-const GKEY = 'bocmai.geminiKey';
-try { const k = localStorage.getItem(GKEY); if (k) { $('#ai-key').value = k; $('#ai-remember').checked = true; } } catch (e) {}
-async function loadGeminiModels() {
-  const key = $('#ai-key').value.trim(); if (!key) return;
-  try {
-    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } });
-    const j = await r.json(); if (!r.ok) throw new Error(j.error?.message || r.status);
-    const names = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
-      .map(m => m.name.replace('models/', '')).filter(n => /flash/i.test(n) && !/image|tts|audio|live|embedding|preview-tts/i.test(n));
-    if (names.length) {
-      const cur = $('#ai-model').value;
-      names.sort((a, b) => (/lite/.test(a) - /lite/.test(b)) || b.localeCompare(a, undefined, { numeric: true }));
-      $('#ai-model').innerHTML = names.map(n => `<option${n === cur ? ' selected' : ''}>${n}</option>`).join('');
-    }
-    $('#ai-msg').className = 'msg ok'; $('#ai-msg').textContent = `Key hợp lệ. Có ${names.length} model Flash dùng được.`;
-  } catch (e) { $('#ai-msg').className = 'msg err'; $('#ai-msg').textContent = 'Không kiểm tra được key: ' + (e.message || e); }
+// ── automatic recognition (rule-based, runs in the browser, no AI / no API) ──
+function nameRooms(rooms, openings) {
+  const cnt = {};
+  const next = (t, base) => { cnt[t] = (cnt[t] || 0) + 1; return base + ' ' + cnt[t]; };
+  const sorted = rooms.slice().sort((a, b) => polyArea(b.poly) - polyArea(a.poly));
+  sorted.forEach((r, i) => {
+    const A = polyArea(r.poly), xs = r.poly.map(p => p[0]), ys = r.poly.map(p => p[1]);
+    const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys), asp = Math.max(w, h) / Math.max(0.1, Math.min(w, h));
+    const near = o => r.poly.some((p, k) => { const q = r.poly[(k + 1) % r.poly.length]; return projOnSeg((o.x1 + o.x2) / 2, (o.y1 + o.y2) / 2, p[0], p[1], q[0], q[1]).d < 0.35; });
+    const facadeGlass = openings.some(o => (o.type === 'glass' || o.type === 'window') && o.ext && near(o));
+    const doors = openings.filter(o => (o.type === 'door' || o.type === 'main') && near(o)).length;
+    if (i === 0) { r.type = 'living'; r.name = 'Khách – ăn – bếp'; }
+    else if (facadeGlass && A < 12 && asp > 2.2 && !doors) { r.type = A < 6 ? 'balcony' : 'logia'; r.name = r.type === 'balcony' ? next('bc', 'Ban công') : next('lg', 'Lô gia'); }
+    else if (A < 7.5 && doors) { r.type = 'bath'; r.name = next('wc', 'WC'); }
+    else if (A >= 7.5 && asp < 2.6) { r.type = 'bedroom'; r.name = next('pn', 'Phòng ngủ'); }
+    else if (asp >= 2.6 && !facadeGlass) { r.type = 'hall'; r.name = next('hl', 'Hành lang'); }
+    else { r.type = 'utility'; r.name = next('ph', 'Phòng'); }
+  });
 }
-$('#ai-key').onchange = () => { try { if ($('#ai-remember').checked) localStorage.setItem(GKEY, $('#ai-key').value.trim()); } catch (e) {} loadGeminiModels(); };
-$('#ai-remember').onchange = e => { try { if (e.target.checked) localStorage.setItem(GKEY, $('#ai-key').value.trim()); else localStorage.removeItem(GKEY); } catch (er) {} };
-if ($('#ai-key').value) setTimeout(loadGeminiModels, 300);
-async function geminiRead(instr, blob) {
-  const key = $('#ai-key').value.trim(), model = $('#ai-model').value;
-  const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result.split(',')[1]); fr.readAsDataURL(blob); });
-  const parts = [{ inline_data: { mime_type: 'image/jpeg', data: b64 } }, { text: instr }];
-  for (const cfg of [{ responseMimeType: 'application/json', temperature: 0.2 }, { temperature: 0.2 }]) {
-    let r;
-    try { r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts }], generationConfig: cfg }) }); }
-    catch (e) { throw new Error('không kết nối được máy chủ Gemini (mạng hoặc trang đang chạy trong Claude)'); }
-    const j = await r.json().catch(() => ({}));
-    if (r.ok) return { text: (j.candidates?.[0]?.content?.parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('') };
-    const m = j.error?.message || 'HTTP ' + r.status;
-    if (r.status === 400 && /responseMimeType|response_mime_type|Unknown name/i.test(m)) continue;
-    if (r.status === 429) throw new Error('hết hạn mức miễn phí tạm thời (429) — đợi 1 phút rồi thử lại, hoặc chọn model Flash-Lite');
-    throw new Error(m);
-  }
-}
-
 $('#btn-ai').onclick = async () => {
   const msg = $('#ai-msg'); msg.className = 'msg';
-  if (!L.img) { msg.className = 'msg err'; msg.textContent = 'Tải ảnh layout lên trước.'; return; }
-  if (sampleFn) {
-    try {
-      const lim = sampleFn.limits ? await sampleFn.limits() : { images: true };
-      if (!lim.images) throw { message: 'Phiên này chưa cho phép gửi ảnh cho Claude.' };
-    } catch (e) { msg.className = 'msg err'; msg.textContent = e.message || 'Không gửi được ảnh.'; return; }
-  } else if (!$('#ai-key').value.trim()) { msg.className = 'msg err'; msg.textContent = 'Dán Gemini API key (miễn phí, lấy tại aistudio.google.com/apikey) vào ô trên trước.'; return; }
-  const btn = $('#btn-ai'); btn.disabled = true; msg.textContent = (sampleFn ? 'Claude' : 'Gemini') + ' đang đọc bản vẽ… (thường 30–90 giây)';
+  if (!L.img || !imgEl.naturalWidth) { msg.className = 'msg err'; msg.textContent = 'Tải ảnh layout (JPG/PNG) lên trước.'; return; }
+  const btn = $('#btn-ai'); btn.disabled = true; msg.textContent = 'Đang nhận diện…';
+  await new Promise(r => setTimeout(r, 30));
   try {
-    // send at most 1600 px
-    const k = Math.min(1, 1600 / Math.max(L.img.w, L.img.h));
+    const k = Math.min(1, 1400 / Math.max(L.img.w, L.img.h));
     const c = document.createElement('canvas'); c.width = Math.round(L.img.w * k); c.height = Math.round(L.img.h * k);
-    c.getContext('2d').drawImage(imgEl, 0, 0, c.width, c.height);
-    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
-    const instr = `You are reading an apartment floor plan image (${c.width}×${c.height} px; x to the right, y downward, origin top-left).
-Return ONLY a JSON object, no prose, with all coordinates in IMAGE PIXELS of this image:
-{
- "doorWidthPx": number,                       // typical interior door leaf width in px
- "walls": [{"x1","y1","x2","y2","exterior":bool}],   // wall CENTRELINES, straight segments, horizontal/vertical where the drawing is; continuous through door/window openings
- "openings": [{"type":"door"|"main"|"window"|"slide"|"glass","x1","y1","x2","y2","hinge":[x,y],"swingSide":[x,y]}],
-     // x1..y2 = the opening span ON the wall centreline. hinge = the end where the door leaf is hinged. swingSide = any point inside the room the door opens into. "main" = the apartment entrance (often marked "lối vào"/"entry"). "slide" = sliding glass doors to balconies. "glass" = glass balustrade / full glazing on the facade. "window" = windows.
- "rooms": [{"name": Vietnamese room name, "type":"living"|"bedroom"|"bath"|"kitchen"|"balcony"|"logia"|"hall"|"utility","poly":[[x,y],...]}],   // polygons along wall centrelines; open-plan living+dining+kitchen+corridor can be one room
- "items": [{"type": one of ${Object.keys(CATALOG).join('|')}, "cx","cy","w","d","front":"up"|"down"|"left"|"right"}]
-     // w = width along the item's back, d = depth; front = the side a person uses (bed: foot end; sofa: seat side; toilet: bowl side; washer: drum door side; wardrobe: door side; boxes with an X are technical shafts = "shaft")
-}
-Be exhaustive and precise. Count every door and window exactly once. Do not invent elements that are not drawn.`;
-    const res = sampleFn ? await sampleFn(instr, { images: [blob], modelTier: 'complex' }) : await geminiRead(instr, blob);
-    const txt = (res.text || '').replace(/```json|```/g, '');
-    const j = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
-    // scale: AI width field if given, else door width ≈ 0.85 m
-    const pxToImg = 1 / k;
-    let s = L.scale;
-    const outerW = +$('#ai-width').value;
-    if (outerW > 0 && j.walls?.length) { const xs = j.walls.flatMap(w => [w.x1, w.x2]); s = outerW / ((Math.max(...xs) - Math.min(...xs)) * pxToImg); }
-    else if (j.doorWidthPx > 5) s = 0.85 / (j.doorWidthPx * pxToImg);
-    const m = v => +(v * pxToImg * s).toFixed(3);
+    const x = c.getContext('2d', { willReadFrequently: true }); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+    // downscale in halving steps (smoother than one big jump, keeps thin door arcs visible)
+    let src = imgEl, sw = L.img.w, sh = L.img.h;
+    while (sw / 2 > c.width) { const tc = document.createElement('canvas'); tc.width = Math.round(sw / 2); tc.height = Math.round(sh / 2); const tx = tc.getContext('2d'); tx.imageSmoothingQuality = 'high'; tx.drawImage(src, 0, 0, tc.width, tc.height); src = tc; sw = tc.width; sh = tc.height; }
+    x.imageSmoothingQuality = 'high'; x.drawImage(src, 0, 0, c.width, c.height);
+    const R = detectLayout(x.getImageData(0, 0, c.width, c.height));
+    if (!R.walls.length) throw new Error('không thấy tường đặc màu tối trong ảnh');
+    // scale (metres per detection pixel): known overall width > median door width > wall thickness
+    let mpp;
+    const W0 = +$('#ai-width').value, xs = R.walls.flatMap(w => [w.x1, w.x2]);
+    const doors = R.openings.filter(o => o.type === 'door').map(o => Math.hypot(o.x2 - o.x1, o.y2 - o.y1)).sort((a, b) => a - b);
+    let how;
+    if (W0 > 0) { mpp = W0 / (Math.max(...xs) - Math.min(...xs) + R.tExt); how = 'theo chiều ngang chị nhập'; }
+    else if (doors.length >= 2) { mpp = 0.82 / doors[Math.floor(doors.length / 2)]; how = `ước theo bề rộng cửa đi (~0,82 m)`; }
+    else { mpp = 0.2 / R.tExt; how = 'ước theo độ dày tường ngoài (~0,2 m)'; }
+    const m = v => +(v * mpp).toFixed(3);
     snap();
-    L.scale = s;
-    L.walls = (j.walls || []).map(w => ({ id: uid('w'), x1: m(w.x1), y1: m(w.y1), x2: m(w.x2), y2: m(w.y2), t: w.exterior ? 0.2 : 0.12 }));
-    L.openings = (j.openings || []).filter(o => OPEN_TYPES[o.type]).map(o => {
-      const r = { id: uid('o'), type: o.type, x1: m(o.x1), y1: m(o.y1), x2: m(o.x2), y2: m(o.y2), hinge: 1, swing: 1 };
-      if (o.hinge) r.hinge = dist(o.hinge[0], o.hinge[1], o.x2, o.y2) < dist(o.hinge[0], o.hinge[1], o.x1, o.y1) ? 2 : 1;
-      if (o.swingSide) { const nx = -(o.y2 - o.y1), ny = o.x2 - o.x1; r.swing = ((o.swingSide[0] - o.x1) * nx + (o.swingSide[1] - o.y1) * ny) >= 0 ? 1 : -1; }
-      return r;
-    });
-    L.rooms = (j.rooms || []).filter(r => r.poly?.length > 2).map(r => ({ id: uid('r'), name: r.name || 'Phòng', type: ROOM_TYPES[r.type] ? r.type : 'living', poly: r.poly.map(([x, y]) => [m(x), m(y)]) }));
-    const ROT = { down: 0, left: 90, up: 180, right: 270 };
-    L.items = (j.items || []).filter(it => CATALOG[it.type]).map(it => ({ id: uid('i'), type: it.type, x: m(it.cx), y: m(it.cy), w: m(it.w) || CATALOG[it.type].w, d: m(it.d) || CATALOG[it.type].d, rot: ROT[it.front] ?? 0 }));
+    L.scale = mpp * k;                                    // metres per ORIGINAL image px
+    L.walls = R.walls.map(w => ({ id: uid('w'), x1: m(w.x1), y1: m(w.y1), x2: m(w.x2), y2: m(w.y2), t: w.t >= R.t * 1.25 ? 0.2 : 0.12 }));
+    L.openings = R.openings.map(o => opDefaults({ id: uid('o'), type: o.type, x1: m(o.x1), y1: m(o.y1), x2: m(o.x2), y2: m(o.y2), hinge: o.hinge, swing: o.swing, ext: o.ext }));
+    L.openings.filter(o => o.type === 'glass' && o.ext).forEach(o => { o.sill = 0; o.head = CEIL_H; });
+    L.rooms = R.rooms.map(r => ({ id: uid('r'), name: 'Phòng', type: 'living', poly: r.poly.map(([px, py]) => [m(px), m(py)]) }));
+    nameRooms(L.rooms, L.openings);
+    // balconies/loggias facing out get a glass balustrade by default
+    L.openings.forEach(o => { if (o.type !== 'glass' || !o.ext) return; const rm = L.rooms.find(r => r.poly.some((p, i) => { const q = r.poly[(i + 1) % r.poly.length]; return projOnSeg((o.x1 + o.x2) / 2, (o.y1 + o.y2) / 2, p[0], p[1], q[0], q[1]).d < 0.35; })); if (rm && (rm.type === 'balcony' || rm.type === 'logia')) { o.sill = 0; o.head = 1.1; } });
+    L.openings.forEach(o => delete o.ext);
+    L.items = [];
     sel = null; updateScaleInfo(); fit2d(); afterChange();
+    const n = t => L.openings.filter(o => o.type === t).length;
     msg.className = 'msg ok';
-    msg.textContent = `Đã đọc: ${L.walls.length} đoạn tường, ${L.openings.length} cửa/cửa sổ, ${L.rooms.length} phòng, ${L.items.length} món. Đây là bản nháp — chị chỉnh lại những chỗ lệch rồi sang bước 2 để đối chiếu.`;
+    msg.innerHTML = `Nhận diện xong: <b>${L.walls.length}</b> đoạn tường, <b>${L.rooms.length}</b> phòng, <b>${n('door')}</b> cửa đi, <b>${n('main')}</b> cửa chính, <b>${n('slide')}</b> cửa kính, <b>${n('window') + n('glass')}</b> cửa sổ/vách kính. Tỷ lệ ${how}: căn rộng ≈ ${((Math.max(...xs) - Math.min(...xs)) * mpp).toFixed(1)} m.<br>Việc tiếp theo: kiểm tra tên phòng, hướng mở cửa, chiều cao kính; đặt nội thất bằng nút "Nội thất".`;
   } catch (e) {
-    msg.className = 'msg err';
-    msg.textContent = e.code === 'not_granted' ? 'Chưa được cấp quyền dùng Claude cho trang này.' : e.code === 'rate_limited' ? 'Đang bị giới hạn lượt, chị thử lại sau ít phút.' : 'AI chưa đọc được bản vẽ này (' + (e.message || 'lỗi định dạng') + '). Chị thử lại hoặc vẽ tay.';
+    msg.className = 'msg err'; msg.textContent = 'Chưa nhận diện được (' + (e.message || e) + '). Bản vẽ cần có tường tô đặc màu tối; nếu không, chị vẽ tay bằng thanh công cụ.';
   } finally { btn.disabled = false; }
 };
 
@@ -544,5 +537,5 @@ $('#modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
 if (loadLocal()) loadLayout(L); else loadLayout(sampleLayout());
 selectStyle(styleKey);
 setMode('select');
-window.__app = { get L() { return L; }, goStep, setViewMode, get viewer() { return viewer; } };
+window.__app = { get L() { return L; }, goStep, setViewMode, get viewer() { return viewer; }, select(o) { sel = o; showProps(); draw2d(); } };
 }
