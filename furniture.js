@@ -368,6 +368,7 @@ export function addDecor(root, L, S, M, H, roomOf) {
       const len = Math.hypot(o.x2 - o.x1, o.y2 - o.y1), ux = (o.x2 - o.x1) / len, uy = (o.y2 - o.y1) / len;
       let nx = -uy, ny = ux; const wl = hostWall(o, L.walls); const t = wl ? wl.t : 0.15;
       if (!pointInPoly(mx + nx * 0.35, my + ny * 0.35, r.poly)) { nx = -nx; ny = -ny; if (!pointInPoly(mx + nx * 0.35, my + ny * 0.35, r.poly)) continue; }
+      if ((o.head || 2.6) < 1.5) continue;                     // no curtains on low balustrades
       const ch = Math.min(H - 0.03, 2.6); if (ch < 0.5) continue;
       for (const end of [0, 1]) {
         const ex = end ? o.x2 : o.x1, ey = end ? o.y2 : o.y1, dir = end ? -1 : 1;
