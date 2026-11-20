@@ -12,12 +12,45 @@ export const ROOM_EN = {
 };
 
 export const OPEN_TYPES = {
-  door:  { vi: 'Cửa đi', en: 'hinged door', w: 0.85 },
-  main:  { vi: 'Cửa chính', en: 'main entrance door', w: 1.0 },
-  window:{ vi: 'Cửa sổ', en: 'window', w: 1.4 },
-  slide: { vi: 'Cửa lùa kính', en: 'full-height sliding glass door', w: 2.4 },
-  glass: { vi: 'Lan can / vách kính', en: 'full-height glass balustrade / glazing', w: 3.0 }
+  door:  { vi: 'Cửa đi', en: 'door', w: 0.85, def: { mech: 'swing', leaves: 1 } },
+  main:  { vi: 'Cửa chính', en: 'main entrance door', w: 1.0, def: { mech: 'swing', leaves: 1 } },
+  window:{ vi: 'Cửa sổ', en: 'window', w: 1.4, def: { mech: 'fixed', sill: 0.9, head: 2.3, slideDir: 1 } },
+  slide: { vi: 'Cửa kính', en: 'glass door', w: 2.4, def: { mech: 'slide', sill: 0, head: 2.4, slideDir: 1 } },
+  glass: { vi: 'Vách / lan can kính', en: 'glazing', w: 3.0, def: { mech: 'fixed', sill: 0, head: 2.8, slideDir: 1 } }
 };
+export const CEIL_H = 2.8;
+export const isGlazing = o => o.type === 'window' || o.type === 'slide' || o.type === 'glass';
+export const MECH = {
+  fixed:  { vi: 'Kính cố định (không mở)', en: 'fixed glazing' },
+  slide:  { vi: 'Cửa lùa', en: 'sliding' },
+  swing:  { vi: 'Mở quay 1 cánh', en: 'single-leaf hinged' },
+  swing2: { vi: 'Mở quay 2 cánh', en: 'double-leaf hinged' }
+};
+// glass heights: [label, sill (m above floor), head (m)]
+export const GLASS_HEIGHTS = {
+  full: ['Kính full tường (sàn → trần)', 0, CEIL_H],
+  q34:  ['Kính 3/4 tường (dưới là tường 0,7 m)', 0.7, CEIL_H],
+  q23:  ['Kính 2/3 tường (dưới là tường 0,93 m)', 0.93, CEIL_H],
+  q12:  ['Kính 1/2 tường (dưới là tường 1,4 m)', 1.4, CEIL_H],
+  door: ['Cửa kính đi lại (sàn → 2,4 m)', 0, 2.4],
+  win:  ['Cửa sổ tiêu chuẩn (0,9 → 2,3 m)', 0.9, 2.3],
+  rail: ['Lan can kính (cao 1,1 m)', 0, 1.1]
+};
+export function opDefaults(o) {
+  const d = OPEN_TYPES[o.type]?.def || {};
+  for (const k in d) if (o[k] === undefined) o[k] = d[k];
+  if (o.hinge === undefined) o.hinge = 1; if (o.swing === undefined) o.swing = 1;
+  return o;
+}
+export const heightKey = o => { for (const k in GLASS_HEIGHTS) { const [, a, b] = GLASS_HEIGHTS[k]; if (Math.abs(a - o.sill) < 0.02 && Math.abs(b - o.head) < 0.02) return k; } return 'custom'; };
+export function glassHeightEN(o) {
+  const s = o.sill || 0, h = o.head || CEIL_H, full = h >= CEIL_H - 0.01;
+  if (s < 0.02 && full) return 'glass from floor to ceiling (full-height)';
+  if (s < 0.02 && h <= 1.3) return `glass balustrade ${h.toFixed(2)} m high`;
+  if (s < 0.02) return `glass from the floor up to ${h.toFixed(2)} m, solid wall above`;
+  const frac = full ? ` (glass on the upper ${Math.round((1 - s / CEIL_H) * 100)}% of the wall)` : '';
+  return `glass from ${s.toFixed(2)} m above the floor to ${full ? 'the ceiling' : h.toFixed(2) + ' m'}, solid wall below${frac}`;
+}
 
 // w = width along the back, d = depth (front–back), h = height
 export const CATALOG = {
@@ -152,9 +185,10 @@ export function sampleLayout() {
   W(1380, 860, 1380, 1210);        // WC2 | kitchen/entry
   W(1210, 1175, 1380, 1175, 0.08); // WC2 | shafts
   W(1210, 860, 1210, 1210, 0.08);  // WC2 left shaft line
-  const O = (type, x1, y1, x2, y2, hinge = 1, swing = 1) => L.openings.push({ id: uid('o'), type, x1: m(x1), y1: m(y1), x2: m(x2), y2: m(y2), hinge, swing });
+  const O = (type, x1, y1, x2, y2, hinge = 1, swing = 1) => L.openings.push(opDefaults({ id: uid('o'), type, x1: m(x1), y1: m(y1), x2: m(x2), y2: m(y2), hinge, swing }));
   // facade glazing (top edge)
   O('glass', 100, 113, 398, 113); O('window', 450, 113, 705, 113); O('window', 785, 113, 1000, 113); O('glass', 1095, 113, 1715, 113);
+  L.openings.filter(o => o.type === 'glass').forEach(o => { o.sill = 0; o.head = 1.1; });   // balcony / loggia balustrades
   O('slide', 105, 270, 355, 270); O('slide', 1335, 270, 1675, 270);
   // doors: hinge 1/2 = which end; swing ±1 = side relative to the wall's left normal (−dy, dx)
   O('door', 414, 695, 414, 780, 2, 1);      // master: opens into the bedroom (left)
