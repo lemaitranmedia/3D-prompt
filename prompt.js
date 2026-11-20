@@ -1,5 +1,5 @@
 // Prompt builder for Gemini: geometry-locked restyle of the exported 3D massing render.
-import { CATALOG, OPEN_TYPES, ROOM_EN, DIR_EN, dirKey, polyArea, pointInPoly, distToPolyEdge, layoutBBox, planSide, hostWall } from './model.js';
+import { CATALOG, OPEN_TYPES, ROOM_EN, DIR_EN, dirKey, polyArea, pointInPoly, distToPolyEdge, layoutBBox, planSide, hostWall, opDefaults, isGlazing, glassHeightEN } from './model.js';
 
 const LIGHT_EN = {
   day: 'natural daylight from the upper left, soft realistic shadows',
@@ -59,7 +59,24 @@ export function buildPrompts(L, S, o) {
   const openList = L.openings.map(op => {
     const r = inv.rooms.filter(x => x.ops.includes(op)).map(x => x.r.name).join(' ↔ ') || 'exterior wall';
     const w = Math.hypot(op.x2 - op.x1, op.y2 - op.y1);
-    return `- ${OPEN_TYPES[op.type].en}, ${w.toFixed(2)} m wide, ${planSide((op.x1 + op.x2) / 2, (op.y1 + op.y2) / 2, bb)} of the plan, serving: ${r}`;
+    opDefaults(op);
+    const mx = (op.x1 + op.x2) / 2, my = (op.y1 + op.y2) / 2, ux = (op.x2 - op.x1) / w, uy = (op.y2 - op.y1) / w;
+    const into = roomOf(L, mx - uy * op.swing * 0.45, my + ux * op.swing * 0.45);
+    const intoTxt = into ? `opens into the ${into.name}` : 'opens outward';
+    const intoPl = into ? `open into the ${into.name}` : 'open outward';
+    const hx = op.hinge === 2 ? op.x2 : op.x1, hy = op.hinge === 2 ? op.y2 : op.y1, fx = op.hinge === 2 ? op.x1 : op.x2, fy = op.hinge === 2 ? op.y1 : op.y2;
+    const hingeEnd = Math.abs(fx - hx) >= Math.abs(fy - hy) ? (hx < fx ? 'left' : 'right') : (hy < fy ? 'upper' : 'lower');
+    let kind;
+    if (isGlazing(op)) {
+      const m = op.mech;
+      kind = m === 'fixed' ? `fixed ${op.type === 'window' ? 'window' : 'glazing'} (does not open), ${glassHeightEN(op)}`
+        : m === 'slide' ? `sliding glass door, ${glassHeightEN(op)}`
+        : m === 'swing2' ? `double-leaf hinged glass door, ${glassHeightEN(op)}, both leaves ${intoPl}`
+        : `single-leaf hinged glass door, ${glassHeightEN(op)}, hinged at its ${hingeEnd} end (as seen on the plan), ${intoTxt}`;
+    } else {
+      kind = op.leaves === 2 ? `double-leaf ${OPEN_TYPES[op.type].en}, both leaves ${intoPl}` : `single-leaf ${OPEN_TYPES[op.type].en}, hinged at its ${hingeEnd} end (as seen on the plan), ${intoTxt}`;
+    }
+    return `- ${kind}; ${w.toFixed(2)} m wide; ${planSide(mx, my, bb)} of the plan; between: ${r}`;
   });
   const fixtures = L.items.filter(it => ['washer', 'toilet', 'basin', 'shower', 'bathtub', 'sink', 'hob', 'fridge', 'counter', 'island'].includes(it.type)).map(it => fixtureLine(L, it, bb));
   const furniture = L.items.filter(it => !['washer', 'toilet', 'basin', 'shower', 'bathtub', 'sink', 'hob', 'fridge', 'counter', 'island', 'shaft', 'rack'].includes(it.type)).map(it => fixtureLine(L, it, bb));
@@ -105,7 +122,8 @@ ${openList.join('\n')}
 
 6. DOORS AND WINDOWS — CRITICAL
 - Render exactly the openings listed above, each once, at the position shown in IMAGE 1
-- Door leaves are shown open at 90°; keep each hinge side and opening direction as in IMAGE 1
+- Door leaves are shown open at 90°; keep each hinge side and opening direction as in IMAGE 1 and as listed above
+- Keep each glazed opening at the height listed above: solid wall below a raised glass sill, glass up to the stated head height; sliding doors stay sliding, fixed glazing stays fixed
 - Do not duplicate, omit, move, widen or narrow any opening; windows must never become doors
 - Do not interpret wardrobes, cabinet fronts or glass shower screens as doors
 
