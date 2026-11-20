@@ -318,17 +318,56 @@ $('#in-json').onchange = async e => { const f = e.target.files[0]; if (!f) retur
 
 // ── AI read layout (Claude via the page's `sample` capability) ──
 let sampleFn = null;
-(async () => { try { if (window.claude && window.claude.use) sampleFn = await window.claude.use('sample'); } catch (e) {} if (!sampleFn) { $('#btn-ai').disabled = true; $('#ai-msg').textContent = 'Tính năng này chỉ chạy khi mở công cụ trên Claude. Ở nơi khác, chị vẽ tay bằng thanh công cụ.'; } })();
+(async () => { try { if (window.claude && window.claude.use) sampleFn = await window.claude.use('sample'); } catch (e) {} if (!sampleFn) { $('#ai-gem').style.display = ''; $('#ai-engine').textContent = 'Gemini (key miễn phí)'; } })();
+
+// Outside Claude: read the plan with a Gemini Flash model (text output — covered by Gemini's free tier)
+const GKEY = 'bocmai.geminiKey';
+try { const k = localStorage.getItem(GKEY); if (k) { $('#ai-key').value = k; $('#ai-remember').checked = true; } } catch (e) {}
+async function loadGeminiModels() {
+  const key = $('#ai-key').value.trim(); if (!key) return;
+  try {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error?.message || r.status);
+    const names = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+      .map(m => m.name.replace('models/', '')).filter(n => /flash/i.test(n) && !/image|tts|audio|live|embedding|preview-tts/i.test(n));
+    if (names.length) {
+      const cur = $('#ai-model').value;
+      names.sort((a, b) => (/lite/.test(a) - /lite/.test(b)) || b.localeCompare(a, undefined, { numeric: true }));
+      $('#ai-model').innerHTML = names.map(n => `<option${n === cur ? ' selected' : ''}>${n}</option>`).join('');
+    }
+    $('#ai-msg').className = 'msg ok'; $('#ai-msg').textContent = `Key hợp lệ. Có ${names.length} model Flash dùng được.`;
+  } catch (e) { $('#ai-msg').className = 'msg err'; $('#ai-msg').textContent = 'Không kiểm tra được key: ' + (e.message || e); }
+}
+$('#ai-key').onchange = () => { try { if ($('#ai-remember').checked) localStorage.setItem(GKEY, $('#ai-key').value.trim()); } catch (e) {} loadGeminiModels(); };
+$('#ai-remember').onchange = e => { try { if (e.target.checked) localStorage.setItem(GKEY, $('#ai-key').value.trim()); else localStorage.removeItem(GKEY); } catch (er) {} };
+if ($('#ai-key').value) setTimeout(loadGeminiModels, 300);
+async function geminiRead(instr, blob) {
+  const key = $('#ai-key').value.trim(), model = $('#ai-model').value;
+  const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result.split(',')[1]); fr.readAsDataURL(blob); });
+  const parts = [{ inline_data: { mime_type: 'image/jpeg', data: b64 } }, { text: instr }];
+  for (const cfg of [{ responseMimeType: 'application/json', temperature: 0.2 }, { temperature: 0.2 }]) {
+    let r;
+    try { r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts }], generationConfig: cfg }) }); }
+    catch (e) { throw new Error('không kết nối được máy chủ Gemini (mạng hoặc trang đang chạy trong Claude)'); }
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) return { text: (j.candidates?.[0]?.content?.parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('') };
+    const m = j.error?.message || 'HTTP ' + r.status;
+    if (r.status === 400 && /responseMimeType|response_mime_type|Unknown name/i.test(m)) continue;
+    if (r.status === 429) throw new Error('hết hạn mức miễn phí tạm thời (429) — đợi 1 phút rồi thử lại, hoặc chọn model Flash-Lite');
+    throw new Error(m);
+  }
+}
 
 $('#btn-ai').onclick = async () => {
   const msg = $('#ai-msg'); msg.className = 'msg';
   if (!L.img) { msg.className = 'msg err'; msg.textContent = 'Tải ảnh layout lên trước.'; return; }
-  if (!sampleFn) return;
-  try {
-    const lim = sampleFn.limits ? await sampleFn.limits() : { images: true };
-    if (!lim.images) throw { message: 'Phiên này chưa cho phép gửi ảnh cho Claude.' };
-  } catch (e) { msg.className = 'msg err'; msg.textContent = e.message || 'Không gửi được ảnh.'; return; }
-  const btn = $('#btn-ai'); btn.disabled = true; msg.textContent = 'Claude đang đọc bản vẽ… (thường 30–90 giây)';
+  if (sampleFn) {
+    try {
+      const lim = sampleFn.limits ? await sampleFn.limits() : { images: true };
+      if (!lim.images) throw { message: 'Phiên này chưa cho phép gửi ảnh cho Claude.' };
+    } catch (e) { msg.className = 'msg err'; msg.textContent = e.message || 'Không gửi được ảnh.'; return; }
+  } else if (!$('#ai-key').value.trim()) { msg.className = 'msg err'; msg.textContent = 'Dán Gemini API key (miễn phí, lấy tại aistudio.google.com/apikey) vào ô trên trước.'; return; }
+  const btn = $('#btn-ai'); btn.disabled = true; msg.textContent = (sampleFn ? 'Claude' : 'Gemini') + ' đang đọc bản vẽ… (thường 30–90 giây)';
   try {
     // send at most 1600 px
     const k = Math.min(1, 1600 / Math.max(L.img.w, L.img.h));
@@ -347,7 +386,7 @@ Return ONLY a JSON object, no prose, with all coordinates in IMAGE PIXELS of thi
      // w = width along the item's back, d = depth; front = the side a person uses (bed: foot end; sofa: seat side; toilet: bowl side; washer: drum door side; wardrobe: door side; boxes with an X are technical shafts = "shaft")
 }
 Be exhaustive and precise. Count every door and window exactly once. Do not invent elements that are not drawn.`;
-    const res = await sampleFn(instr, { images: [blob], modelTier: 'complex' });
+    const res = sampleFn ? await sampleFn(instr, { images: [blob], modelTier: 'complex' }) : await geminiRead(instr, blob);
     const txt = (res.text || '').replace(/```json|```/g, '');
     const j = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
     // scale: AI width field if given, else door width ≈ 0.85 m
